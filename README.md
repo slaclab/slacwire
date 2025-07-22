@@ -1,2 +1,2 @@
 # slacwire
-Repo for Python wire scanner application. 
+Repo for Python wire scanner application.
