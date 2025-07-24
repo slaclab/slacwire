@@ -37,7 +37,9 @@ class MeasurementWidget(QGroupBox):
         self.detector_combo = QComboBox()
         self.bpm_list = QListWidget()
         self.jitter_checkbox = QCheckBox("Apply Jitter Correction")
+        self.jitter_checkbox.setEnabled(False)
         self.charge_checkbox = QCheckBox("Normalize by Charge")
+        self.charge_checkbox.setEnabled(False)
 
         layout = QVBoxLayout()
         layout.addWidget(self.wire_combo)
