@@ -45,7 +45,7 @@ class WireScanGUI(Display):
         self.my_data = {}
         self.my_scans = {}
 
-        filepath = ""
+        filepath = "/usr/local/lcls/tools/python/hla/slacwire/"
         filename = "wire_scan_gui.yaml"
         full_path = os.path.join(filepath, filename)
         with open(full_path, "r") as f:
@@ -72,8 +72,7 @@ class WireScanGUI(Display):
 
     def ui_filepath(self):
         # Return the full path to the UI file
-        return os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), self.ui_filename()
+        return os.path.join("/usr/local/lcls/tools/python/hla/slacwire", self.ui_filename()
         )
 
     def init_ui(self):
