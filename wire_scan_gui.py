@@ -170,12 +170,43 @@ class WireScanGUI(Display):
 
         prof_x = self.my_data[w].profiles[profile].positions
         prof_y = self.my_data[w].profiles[profile].detectors[d]
+        fr = self.my_data[w].fit_result.copy()
+        fit_y = fr[profile][d].curve
 
         pp.axes.cla()
-        pp.axes.plot(prof_x, prof_y)
+        pp.axes.plot(prof_x,
+                     prof_y,
+                     label="Measured",
+                     linestyle= "dotted",
+                     color="blue")
+        pp.axes.plot(prof_x,
+                     fit_y,
+                     label="Fit",
+                     linestyle="-",
+                     color="orange")
+        
         pp.axes.set_xlabel("Wire Position (µm)")
         detector_label = "% Beam Loss" if d == "TMITLOSS" else f"{d} Counts"
         pp.axes.set_ylabel(detector_label)
+        
+        pp.axes.legend(loc="upper right")
+        pp.axes.grid(True, which="both", linestyle="--", alpha=0.6)
+        
+        params_text = (
+            f"Mean: {fr[profile][d].mean:.1f} µm\n"
+            f"Sigma: {fr[profile][d].sigma:.1f} µm\n"
+            f"Amplitude: {fr[profile][d].amplitude:.1f} %\n"
+            f"Offset: {fr[profile][d].offset:.1f} %")
+
+        pp.axes.tick_params(axis='both',which='major')
+        pp.axes.text(
+            0.95, 0.15, params_text,
+            transform=pp.axes.transAxes,
+            verticalalignment="bottom",
+            horizontalalignment="right",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8)
+        )
+        
         pp.figure.tight_layout()
         pp.draw()
 
