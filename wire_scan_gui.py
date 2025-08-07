@@ -40,7 +40,9 @@ class WireScanGUI(Display):
     dataChanged = pyqtSignal()
 
     def __init__(self, parent=None, args=None, macros=None):
-        super(WireScanGUI, self).__init__(parent=parent, args=args, macros=None)
+        super(WireScanGUI, self).__init__(parent=parent,
+                                          args=args,
+                                          macros=None)
 
         self.my_data = {}
         self.my_scans = {}
@@ -72,8 +74,8 @@ class WireScanGUI(Display):
 
     def ui_filepath(self):
         # Return the full path to the UI file
-        return os.path.join("/usr/local/lcls/tools/python/hla/slacwire", self.ui_filename()
-        )
+        return os.path.join("/usr/local/lcls/tools/python/hla/slacwire",
+                            self.ui_filename())
 
     def init_ui(self):
         self.ControlsLayout.insertWidget(0, self.nav)
@@ -97,8 +99,9 @@ class WireScanGUI(Display):
             name = child.objectName()
             if not name.endswith("Label"):
                 pv_obj = getattr(
-                    self.measurement.active_wire.controls_information.PVs, name, None
-                )
+                    self.measurement.active_wire.controls_information.PVs,
+                    name,
+                    None)
                 child.channel = pv_obj.pvname
 
     def start_scan_callback(self):
@@ -107,8 +110,8 @@ class WireScanGUI(Display):
 
         if w not in self.my_scans:
             self.my_scans[w] = WireBeamProfileMeasurement(
-                my_wire=self.measurement.active_wire, beampath=self.nav.beampath
-            )
+                my_wire=self.measurement.active_wire,
+                beampath=self.nav.beampath)
 
             self.logger.info("Scan object made for %s", w)
 
@@ -152,11 +155,13 @@ class WireScanGUI(Display):
         tp.secondary_axes = ax2
 
         # Plot wire position
-        ax1.plot(scan_points, traj_wire, label="Wire Position (µm)", color="#1f77b4")
+        ax1.plot(scan_points, traj_wire, label="Wire Position (µm)",
+                 color="#1f77b4")
         ax1.set_ylabel("Wire Position (µm)", color="#1f77b4")
         ax1.tick_params(axis="y", labelcolor="#1f77b4")
 
-        ax2.plot(scan_points, traj_detector, label=detector_label, color="#d95f02")
+        ax2.plot(scan_points, traj_detector, label=detector_label,
+                 color="#d95f02")
         ax2.set_ylabel(detector_label, color="#d95f02")
         ax2.tick_params(axis="y", labelcolor="#d95f02")
 
@@ -177,28 +182,28 @@ class WireScanGUI(Display):
         pp.axes.plot(prof_x,
                      prof_y,
                      label="Measured",
-                     linestyle= "dotted",
+                     linestyle="dotted",
                      color="blue")
         pp.axes.plot(prof_x,
                      fit_y,
                      label="Fit",
                      linestyle="-",
                      color="orange")
-        
+
         pp.axes.set_xlabel("Wire Position (µm)")
         detector_label = "% Beam Loss" if d == "TMITLOSS" else f"{d} Counts"
         pp.axes.set_ylabel(detector_label)
-        
+
         pp.axes.legend(loc="upper right")
         pp.axes.grid(True, which="both", linestyle="--", alpha=0.6)
-        
+
         params_text = (
             f"Mean: {fr[profile][d].mean:.1f} µm\n"
             f"Sigma: {fr[profile][d].sigma:.1f} µm\n"
             f"Amplitude: {fr[profile][d].amplitude:.1f} %\n"
             f"Offset: {fr[profile][d].offset:.1f} %")
 
-        pp.axes.tick_params(axis='both',which='major')
+        pp.axes.tick_params(axis='both', which='major')
         pp.axes.text(
             0.95, 0.15, params_text,
             transform=pp.axes.transAxes,
@@ -206,7 +211,7 @@ class WireScanGUI(Display):
             horizontalalignment="right",
             bbox=dict(boxstyle="round", facecolor="white", alpha=0.8)
         )
-        
+
         pp.figure.tight_layout()
         pp.draw()
 
