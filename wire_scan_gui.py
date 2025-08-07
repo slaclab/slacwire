@@ -16,6 +16,7 @@ from widgets.plots import PlotWidget
 from widgets.text_logger import attach_logger_to_widget
 import logging
 from datetime import datetime
+import physicselog as elog
 
 
 class WireScanThread(QThread):
@@ -84,6 +85,7 @@ class WireScanGUI(Display):
 
         self.ui.startButton.clicked.connect(self.start_scan_callback)
         self.ui.saveDataButton.clicked.connect(self.save_callback)
+        self.ui.logBookButton.clicked.connect(self.logbook_callback)
 
         self.ui.statusUpdate.setReadOnly(True)
         self.logger = logging.getLogger("wire_scan_logger")
@@ -137,6 +139,21 @@ class WireScanGUI(Display):
         with open(filename, "wb") as f:
             pickle.dump(self.my_data[w], f)
         self.logger.info("Data pickled to {filename}")
+
+    def logbook_callback(self):
+        w = self.measurement.wire
+        d = self.measurement.detector
+        p = self.plots.profile_control.profile
+        
+        logbook = "lcls2"
+        username = "Wire Scan GUI"
+        title = f"{w} Scan v. {d} - {p} Profile"
+        
+        entry_text = ""
+        fig = self.plots.profile_plot
+        floc = "/tmp/profile_plot.png"
+        fig.figure.savefig(floc, dpi=150)
+        elog.submit_entry(logbook, username, title, entry_text, floc)
 
     def update_trajectory_plot(self):
         w = self.measurement.wire

@@ -356,13 +356,13 @@ QTextEdit::viewport {
       <enum>QFrame::Raised</enum>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
-      <item row="0" column="1">
-       <widget class="QPushButton" name="saveConfigButton">
+      <item row="1" column="1">
+       <widget class="QPushButton" name="loadConfigButton">
         <property name="enabled">
          <bool>false</bool>
         </property>
         <property name="text">
-         <string>Save Config</string>
+         <string>Load Config</string>
         </property>
        </widget>
       </item>
@@ -380,13 +380,20 @@ QTextEdit::viewport {
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QPushButton" name="loadConfigButton">
+      <item row="0" column="1">
+       <widget class="QPushButton" name="saveConfigButton">
         <property name="enabled">
          <bool>false</bool>
         </property>
         <property name="text">
-         <string>Load Config</string>
+         <string>Save Config</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QPushButton" name="logBookButton">
+        <property name="text">
+         <string>Post to Logbook...</string>
         </property>
        </widget>
       </item>
