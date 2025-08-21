@@ -3,7 +3,7 @@ import pickle
 import yaml
 import numpy as np
 from pydm import Display
-from qtpy.QtWidgets import QVBoxLayout, QWidget
+from qtpy.QtWidgets import QVBoxLayout, QWidget, QFileDialog
 from PyQt5.QtCore import pyqtSignal, QThread
 from lcls_tools.common.devices.reader import create_wire
 from lcls_tools.common.measurements.wire_scan import WireBeamProfileMeasurement
@@ -142,6 +142,28 @@ class WireScanGUI(Display):
             self.logger.info("Data pickled to {filename}")
         else:
             self.logger.info(f"No data for {w} to save!")
+
+    def load_callback(self):
+        def open_file_browser():
+            file_path, _ = QFileDialog.getOpenFileName(self, "Select a file")
+            if file_path:
+                try:
+                    with open(file_path, 'rb') as f:
+                        data = pickle.load(f)
+                    w = data.metadata.wire_name
+
+                    self.file_path = file_path
+                    return w, data
+                except Exception as e:
+                    self.logger.info(f"Failed to load data: {e}")
+                    return None
+        result = open_file_browser()
+        if result is not None:
+            w, data = result
+            self.my_data[w] = data
+            self.logger.info(f"Successfully loaded data for {w}")
+        else:
+            self.logger.info("Failed to load data.")
 
     def logbook_callback(self):
         w = self.measurement.wire
