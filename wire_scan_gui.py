@@ -85,6 +85,7 @@ class WireScanGUI(Display):
 
         self.ui.startButton.clicked.connect(self.start_scan_callback)
         self.ui.saveDataButton.clicked.connect(self.save_callback)
+        self.ui.loadDataButton.clicked.connect(self.load_callback)
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
 
         self.ui.statusUpdate.setReadOnly(True)
