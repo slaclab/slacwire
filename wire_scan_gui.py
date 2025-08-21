@@ -135,20 +135,23 @@ class WireScanGUI(Display):
 
     def save_callback(self):
         w = self.measurement.wire
-        filename = f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.pkl"
-        with open(filename, "wb") as f:
-            pickle.dump(self.my_data[w], f)
-        self.logger.info("Data pickled to {filename}")
+        if w in self.my_data:
+            filename = f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.pkl"
+            with open(filename, "wb") as f:
+                pickle.dump(self.my_data[w], f)
+            self.logger.info("Data pickled to {filename}")
+        else:
+            self.logger.info(f"No data for {w} to save!")
 
     def logbook_callback(self):
         w = self.measurement.wire
         d = self.measurement.detector
         p = self.plots.profile_control.profile
-        
+
         logbook = "lcls2"
         username = "Wire Scan GUI"
         title = f"{w} Scan v. {d} - {p} Profile"
-        
+
         entry_text = ""
         fig = self.plots.profile_plot
         floc = "/tmp/profile_plot.png"
