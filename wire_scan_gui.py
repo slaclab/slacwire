@@ -3,7 +3,7 @@ import pickle
 import yaml
 import numpy as np
 from pydm import Display
-from qtpy.QtWidgets import QVBoxLayout, QWidget
+from qtpy.QtWidgets import QVBoxLayout, QWidget, QFileDialog
 from PyQt5.QtCore import pyqtSignal, QThread
 from lcls_tools.common.devices.reader import create_wire
 from lcls_tools.common.measurements.wire_scan import WireBeamProfileMeasurement
@@ -16,6 +16,7 @@ from widgets.plots import PlotWidget
 from widgets.text_logger import attach_logger_to_widget
 import logging
 from datetime import datetime
+import physicselog as elog
 
 
 class WireScanThread(QThread):
@@ -40,7 +41,9 @@ class WireScanGUI(Display):
     dataChanged = pyqtSignal()
 
     def __init__(self, parent=None, args=None, macros=None):
-        super(WireScanGUI, self).__init__(parent=parent, args=args, macros=None)
+        super(WireScanGUI, self).__init__(parent=parent,
+                                          args=args,
+                                          macros=None)
 
         self.my_data = {}
         self.my_scans = {}
@@ -72,8 +75,8 @@ class WireScanGUI(Display):
 
     def ui_filepath(self):
         # Return the full path to the UI file
-        return os.path.join("/usr/local/lcls/tools/python/hla/slacwire", self.ui_filename()
-        )
+        return os.path.join("/usr/local/lcls/tools/python/hla/slacwire",
+                            self.ui_filename())
 
     def init_ui(self):
         self.ControlsLayout.insertWidget(0, self.nav)
@@ -82,6 +85,7 @@ class WireScanGUI(Display):
 
         self.ui.startButton.clicked.connect(self.start_scan_callback)
         self.ui.saveDataButton.clicked.connect(self.save_callback)
+        self.ui.logBookButton.clicked.connect(self.logbook_callback)
 
         self.ui.statusUpdate.setReadOnly(True)
         self.logger = logging.getLogger("wire_scan_logger")
@@ -97,8 +101,9 @@ class WireScanGUI(Display):
             name = child.objectName()
             if not name.endswith("Label"):
                 pv_obj = getattr(
-                    self.measurement.active_wire.controls_information.PVs, name, None
-                )
+                    self.measurement.active_wire.controls_information.PVs,
+                    name,
+                    None)
                 child.channel = pv_obj.pvname
 
     def start_scan_callback(self):
@@ -107,8 +112,8 @@ class WireScanGUI(Display):
 
         if w not in self.my_scans:
             self.my_scans[w] = WireBeamProfileMeasurement(
-                my_wire=self.measurement.active_wire, beampath=self.nav.beampath
-            )
+                my_wire=self.measurement.active_wire,
+                beampath=self.nav.beampath)
 
             self.logger.info("Scan object made for %s", w)
 
@@ -130,10 +135,50 @@ class WireScanGUI(Display):
 
     def save_callback(self):
         w = self.measurement.wire
-        filename = f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.pkl"
-        with open(filename, "wb") as f:
-            pickle.dump(self.my_data[w], f)
-        self.logger.info("Data pickled to {filename}")
+        if w in self.my_data:
+            filename = f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.pkl"
+            with open(filename, "wb") as f:
+                pickle.dump(self.my_data[w], f)
+            self.logger.info("Data pickled to {filename}")
+        else:
+            self.logger.info(f"No data for {w} to save!")
+
+    def load_callback(self):
+        def open_file_browser():
+            file_path, _ = QFileDialog.getOpenFileName(self, "Select a file")
+            if file_path:
+                try:
+                    with open(file_path, 'rb') as f:
+                        data = pickle.load(f)
+                    w = data.metadata.wire_name
+
+                    self.file_path = file_path
+                    return w, data
+                except Exception as e:
+                    self.logger.info(f"Failed to load data: {e}")
+                    return None
+        result = open_file_browser()
+        if result is not None:
+            w, data = result
+            self.my_data[w] = data
+            self.logger.info(f"Successfully loaded data for {w}")
+        else:
+            self.logger.info("Failed to load data.")
+
+    def logbook_callback(self):
+        w = self.measurement.wire
+        d = self.measurement.detector
+        p = self.plots.profile_control.profile
+
+        logbook = "lcls2"
+        username = "Wire Scan GUI"
+        title = f"{w} Scan v. {d} - {p} Profile"
+
+        entry_text = ""
+        fig = self.plots.profile_plot
+        floc = "/tmp/profile_plot.png"
+        fig.figure.savefig(floc, dpi=150)
+        elog.submit_entry(logbook, username, title, entry_text, floc)
 
     def update_trajectory_plot(self):
         w = self.measurement.wire
@@ -152,11 +197,13 @@ class WireScanGUI(Display):
         tp.secondary_axes = ax2
 
         # Plot wire position
-        ax1.plot(scan_points, traj_wire, label="Wire Position (µm)", color="#1f77b4")
+        ax1.plot(scan_points, traj_wire, label="Wire Position (µm)",
+                 color="#1f77b4")
         ax1.set_ylabel("Wire Position (µm)", color="#1f77b4")
         ax1.tick_params(axis="y", labelcolor="#1f77b4")
 
-        ax2.plot(scan_points, traj_detector, label=detector_label, color="#d95f02")
+        ax2.plot(scan_points, traj_detector, label=detector_label,
+                 color="#d95f02")
         ax2.set_ylabel(detector_label, color="#d95f02")
         ax2.tick_params(axis="y", labelcolor="#d95f02")
 
@@ -177,28 +224,28 @@ class WireScanGUI(Display):
         pp.axes.plot(prof_x,
                      prof_y,
                      label="Measured",
-                     linestyle= "dotted",
+                     linestyle="dotted",
                      color="blue")
         pp.axes.plot(prof_x,
                      fit_y,
                      label="Fit",
                      linestyle="-",
                      color="orange")
-        
+
         pp.axes.set_xlabel("Wire Position (µm)")
         detector_label = "% Beam Loss" if d == "TMITLOSS" else f"{d} Counts"
         pp.axes.set_ylabel(detector_label)
-        
+
         pp.axes.legend(loc="upper right")
         pp.axes.grid(True, which="both", linestyle="--", alpha=0.6)
-        
+
         params_text = (
             f"Mean: {fr[profile][d].mean:.1f} µm\n"
             f"Sigma: {fr[profile][d].sigma:.1f} µm\n"
             f"Amplitude: {fr[profile][d].amplitude:.1f} %\n"
             f"Offset: {fr[profile][d].offset:.1f} %")
 
-        pp.axes.tick_params(axis='both',which='major')
+        pp.axes.tick_params(axis='both', which='major')
         pp.axes.text(
             0.95, 0.15, params_text,
             transform=pp.axes.transAxes,
@@ -206,7 +253,7 @@ class WireScanGUI(Display):
             horizontalalignment="right",
             bbox=dict(boxstyle="round", facecolor="white", alpha=0.8)
         )
-        
+
         pp.figure.tight_layout()
         pp.draw()
 
