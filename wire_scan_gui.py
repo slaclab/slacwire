@@ -162,6 +162,8 @@ class WireScanGUI(Display):
         if result is not None:
             w, data = result
             self.my_data[w] = data
+            if w == self.measurement.wire:
+                self.update_plots()
             self.logger.info(f"Successfully loaded data for {w}")
         else:
             self.logger.info("Failed to load data.")
@@ -180,6 +182,7 @@ class WireScanGUI(Display):
         floc = "/tmp/profile_plot.png"
         fig.figure.savefig(floc, dpi=150)
         elog.submit_entry(logbook, username, title, entry_text, floc)
+        self.save_callback()
 
     def update_trajectory_plot(self):
         w = self.measurement.wire
@@ -218,7 +221,7 @@ class WireScanGUI(Display):
 
         prof_x = self.my_data[w].profiles[profile].positions
         prof_y = self.my_data[w].profiles[profile].detectors[d]
-        fr = self.my_data[w].fit_result.copy()
+        fr = self.my_data[w].fit_result
         fit_y = fr[profile][d].curve
 
         pp.axes.cla()
