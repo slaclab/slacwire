@@ -91,6 +91,7 @@ class WireScanGUI(Display):
 
         self.ui.statusUpdate.setReadOnly(True)
         self.logger = logging.getLogger("wire_scan_logger")
+        self.logger.setLevel(logging.INFO)
         attach_logger_to_widget(self.logger, self.ui.statusUpdate)
 
         self.plotLayout = QVBoxLayout()
@@ -133,7 +134,7 @@ class WireScanGUI(Display):
 
     def on_scan_failure(self, wire_name, e):
         self.ui.startButton.setEnabled(True)
-        self.logger.erorr(f"Scan failed for {wire_name}: {e}")
+        self.logger.error(f"Scan failed for {wire_name}: {e}")
 
     def save_callback(self):
         w = self.measurement.wire
