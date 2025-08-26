@@ -7,6 +7,7 @@ DATE_FORMAT = "%H:%M:%S"
 
 
 class QTextEditLogger(logging.Handler, QObject):
+    flushOnClose = True
     append_text = pyqtSignal(str)
 
     def __init__(self, text_widget: QTextEdit, level=logging.INFO):
