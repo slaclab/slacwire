@@ -18,6 +18,7 @@ from save_util import dated_dir
 import logging
 from datetime import datetime
 import physicselog as elog
+from h5_io import save_measurement_result, load_measurement_result
 
 
 class WireScanThread(QThread):
@@ -140,10 +141,9 @@ class WireScanGUI(Display):
         w = self.measurement.wire
         if w in self.my_data:
             out_dir = dated_dir()
-            dest = out_dir / f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.pkl"
-            with open(dest, "wb") as f:
-                pickle.dump(self.my_data[w], f)
-            self.logger.info("Data pickled to {filename}")
+            dest = out_dir / f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.hdf5"
+            save_measurement_result(self.my_data[w], dest)
+            self.logger.info("Data saved to {filename}")
         else:
             self.logger.info(f"No data for {w} to save!")
 
@@ -152,18 +152,14 @@ class WireScanGUI(Display):
             file_path, _ = QFileDialog.getOpenFileName(self, "Select a file")
             if file_path:
                 try:
-                    with open(file_path, 'rb') as f:
-                        data = pickle.load(f)
-                    w = data.metadata.wire_name
-
-                    self.file_path = file_path
-                    return w, data
+                    load_measurement_result(file_path, WireBeamProfileMeasurementResult)
                 except Exception as e:
                     self.logger.info(f"Failed to load data: {e}")
                     return None
         result = open_file_browser()
         if result is not None:
-            w, data = result
+            w = result.metadata.wire_name
+            data = result
             self.my_data[w] = data
             if w == self.measurement.wire:
                 self.update_plots()
