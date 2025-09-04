@@ -89,10 +89,12 @@ class WireScanGUI(Display):
 
         self.ui.statusUpdate.setReadOnly(True)
         self.logger = logging.getLogger("wire_scan_logger")
+        self.logger.setLevel(logging.INFO)
         attach_logger_to_widget(self.logger, self.ui.statusUpdate)
 
         self.plotLayout = QVBoxLayout()
         self.ui.plotFrame.setLayout(self.plotLayout)
+        self.plotLayout.addWidget(self.ui.logBookButton)
         self.plotLayout.addWidget(self.plots)
 
     def update_parameters(self):
