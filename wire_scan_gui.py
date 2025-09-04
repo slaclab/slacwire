@@ -14,6 +14,7 @@ from widgets.navigation import NavigationWidget
 from widgets.measurement import MeasurementWidget, extract_measurement_data
 from widgets.plots import PlotWidget
 from widgets.text_logger import attach_logger_to_widget
+from save_util import dated_dir
 import logging
 from datetime import datetime
 import physicselog as elog
@@ -85,6 +86,7 @@ class WireScanGUI(Display):
 
         self.ui.startButton.clicked.connect(self.start_scan_callback)
         self.ui.saveDataButton.clicked.connect(self.save_callback)
+        self.ui.loadDataButton.clicked.connect(self.load_callback)
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
 
         self.ui.statusUpdate.setReadOnly(True)
@@ -133,13 +135,14 @@ class WireScanGUI(Display):
 
     def on_scan_failure(self, wire_name, e):
         self.ui.startButton.setEnabled(True)
-        self.logger.erorr(f"Scan failed for {wire_name}: {e}")
+        self.logger.error(f"Scan failed for {wire_name}: {e}")
 
     def save_callback(self):
         w = self.measurement.wire
         if w in self.my_data:
-            filename = f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.pkl"
-            with open(filename, "wb") as f:
+            out_dir = dated_dir()
+            dest = out_dir / f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.pkl"
+            with open(dest, "wb") as f:
                 pickle.dump(self.my_data[w], f)
             self.logger.info("Data pickled to {filename}")
         else:
@@ -163,6 +166,8 @@ class WireScanGUI(Display):
         if result is not None:
             w, data = result
             self.my_data[w] = data
+            if w == self.measurement.wire:
+                self.update_plots()
             self.logger.info(f"Successfully loaded data for {w}")
         else:
             self.logger.info("Failed to load data.")
@@ -181,6 +186,7 @@ class WireScanGUI(Display):
         floc = "/tmp/profile_plot.png"
         fig.figure.savefig(floc, dpi=150)
         elog.submit_entry(logbook, username, title, entry_text, floc)
+        self.save_callback()
 
     def update_trajectory_plot(self):
         w = self.measurement.wire
@@ -219,7 +225,7 @@ class WireScanGUI(Display):
 
         prof_x = self.my_data[w].profiles[profile].positions
         prof_y = self.my_data[w].profiles[profile].detectors[d]
-        fr = self.my_data[w].fit_result.copy()
+        fr = self.my_data[w].fit_result
         fit_y = fr[profile][d].curve
 
         pp.axes.cla()
