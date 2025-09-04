@@ -96,6 +96,7 @@ class WireScanGUI(Display):
 
         self.plotLayout = QVBoxLayout()
         self.ui.plotFrame.setLayout(self.plotLayout)
+        self.plotLayout.addWidget(self.ui.logBookButton)
         self.plotLayout.addWidget(self.plots)
 
     def update_parameters(self):
