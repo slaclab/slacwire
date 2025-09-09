@@ -93,7 +93,7 @@ class WireScanGUI(Display):
 
         self.ui.statusUpdate.setReadOnly(True)
         out_dir = dated_dir()
-        dest = out_dir / f"WireScanLog-{datetime.now():%Y-%m-d%}.txt"
+        dest = out_dir / f"WireScanLog-{datetime.now():%Y-%m-%d}.txt"
         self.logger = custom_logger(log_file=dest, name="wire_scan_logger")
         self.logger.setLevel(logging.INFO)
         attach_logger_to_widget(self.logger, self.ui.statusUpdate)
@@ -145,7 +145,7 @@ class WireScanGUI(Display):
         w = self.measurement.wire
         if w in self.my_data:
             out_dir = dated_dir()
-            dest = out_dir / f"WireScan-{w}-{datetime.now():%Y-%m-d%-%H%M%S}.hdf5"
+            dest = out_dir / f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.hdf5"
             save_measurement_result(self.my_data[w], dest)
             self.logger.info("Data saved to {filename}")
         else:
