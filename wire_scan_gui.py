@@ -16,6 +16,7 @@ from widgets.plots import PlotWidget
 from widgets.text_logger import attach_logger_to_widget
 from save_util import dated_dir
 import logging
+from lcls_tools.common.logger.file_logger import custom_logger
 from datetime import datetime
 import physicselog as elog
 from h5_io import save_measurement_result, load_measurement_result
@@ -91,7 +92,9 @@ class WireScanGUI(Display):
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
 
         self.ui.statusUpdate.setReadOnly(True)
-        self.logger = logging.getLogger("wire_scan_logger")
+        out_dir = dated_dir()
+        dest = out_dir / f"WireScanLog-{datetime.now():%Y-%m-%d}.txt"
+        self.logger = custom_logger(log_file=dest, name="wire_scan_logger")
         self.logger.setLevel(logging.INFO)
         attach_logger_to_widget(self.logger, self.ui.statusUpdate)
 
