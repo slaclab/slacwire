@@ -120,7 +120,7 @@ class WireScanGUI(Display):
 
         if w not in self.my_scans:
             self.my_scans[w] = WireBeamProfileMeasurement(
-                my_wire=self.measurement.active_wire,
+                beam_profile_device=self.measurement.active_wire,
                 beampath=self.nav.beampath)
 
             self.logger.info("Scan object made for %s", w)
