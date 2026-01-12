@@ -7,6 +7,7 @@ from qtpy.QtWidgets import QVBoxLayout, QWidget, QFileDialog
 from PyQt5.QtCore import pyqtSignal, QThread
 from lcls_tools.common.devices.reader import create_wire
 from lcls_tools.common.measurements.wire_scan import WireBeamProfileMeasurement
+from lcls_tools.common.measurements.nc_wire_scan import NCWireBeamProfileMeasurement
 from lcls_tools.common.measurements.wire_scan_results import (
     WireBeamProfileMeasurementResult,
 )
@@ -29,15 +30,16 @@ class WireScanThread(QThread):
     def __init__(self, wire_name, scan_obj, logger):
         super().__init__()
         self.logger = logger
+        self.logger.propagte = False
         self.wire_name = wire_name
         self.scan_obj = scan_obj
 
     def run(self):
         try:
             result = self.scan_obj.measure()
+            self.scan_complete.emit(self.wire_name, result)
         except Exception as e:
             self.scan_failed.emit(self.wire_name, e)
-        self.scan_complete.emit(self.wire_name, result)
 
 
 class WireScanGUI(Display):
@@ -50,6 +52,7 @@ class WireScanGUI(Display):
 
         self.my_data = {}
         self.my_scans = {}
+        self.my_save_files = {}
 
         filepath = "/usr/local/lcls/tools/python/hla/slacwire/"
         filename = "wire_scan_gui.yaml"
@@ -112,16 +115,22 @@ class WireScanGUI(Display):
                     self.measurement.active_wire.controls_information.PVs,
                     name,
                     None)
-                child.channel = pv_obj.pvname
+                if pv_obj is not None:
+                    child.channel = pv_obj.pvname
 
     def start_scan_callback(self):
         self.ui.startButton.setEnabled(False)
         w = self.measurement.wire
 
         if w not in self.my_scans:
-            self.my_scans[w] = WireBeamProfileMeasurement(
-                beam_profile_device=self.measurement.active_wire,
-                beampath=self.nav.beampath)
+            if self.nav.beampath.startswith("SC"):
+                self.my_scans[w] = WireBeamProfileMeasurement(
+                    beam_profile_device=self.measurement.active_wire,
+                    beampath=self.nav.beampath)
+            elif self.nav.beampath.startswith("CU"):
+                self.my_scans[w] = NCWireBeamProfileMeasurement(
+                    beam_profile_device=self.measurement.active_wire,
+                    beampath=self.nav.beampath)
 
             self.logger.info("Scan object made for %s", w)
 
@@ -131,23 +140,29 @@ class WireScanGUI(Display):
         self.thread.start()
 
     def on_scan_complete(self, wire_name, data):
+        # Re-enable the start button
         self.ui.startButton.setEnabled(True)
+        # Store the data
         self.my_data[wire_name] = data
+        # Prepare the save file path
+        out_dir = dated_dir()
+        dest = out_dir / f"WireScan-{wire_name}-{datetime.now():%Y-%m-%d-%H%M%S}.hdf5"
+        self.my_save_files[wire_name] = dest
         self.update_plots()
         self.dataChanged.emit()
         self.logger.info(f"Scan complete for {wire_name}.")
 
     def on_scan_failure(self, wire_name, e):
         self.ui.startButton.setEnabled(True)
-        self.logger.error(f"Scan failed for {wire_name}: {e}")
+        self.logger.exception(f"Scan failed for {wire_name}: {e}", exc_info=True)
+        raise e
 
     def save_callback(self):
         w = self.measurement.wire
         if w in self.my_data:
-            out_dir = dated_dir()
-            dest = out_dir / f"WireScan-{w}-{datetime.now():%Y-%m-%d-%H%M%S}.hdf5"
+            dest = self.my_save_files[w]
             save_measurement_result(self.my_data[w], dest)
-            self.logger.info("Data saved to {filename}")
+            self.logger.info(f"Data saved to {dest}")
         else:
             self.logger.info(f"No data for {w} to save!")
 
@@ -175,10 +190,13 @@ class WireScanGUI(Display):
         w = self.measurement.wire
         d = self.measurement.detector
         p = self.plots.profile_control.profile
-
-        logbook = "lcls2"
         username = "Wire Scan GUI"
         title = f"{w} Scan v. {d} - {p} Profile"
+
+        if self.nav.beampath.startswith("SC"):
+            logbook = "lcls2"
+        elif self.nav.beampath.startswith("CU"):
+            logbook = "lcls"
 
         entry_text = ""
         fig = self.plots.profile_plot
