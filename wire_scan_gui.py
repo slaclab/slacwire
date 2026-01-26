@@ -54,7 +54,7 @@ class WireScanGUI(Display):
         self.my_scans = {}
         self.my_save_files = {}
 
-        filepath = "/usr/local/lcls/tools/python/hla/slacwire/"
+        filepath = "/usr/local/lcls/tools/python/hla/slacwire"
         filename = "wire_scan_gui.yaml"
         full_path = os.path.join(filepath, filename)
         with open(full_path, "r") as f:
@@ -239,36 +239,56 @@ class WireScanGUI(Display):
         d = self.measurement.detector
         pp = self.plots.profile_plot
         profile = self.plots.profile_control.profile.lower()
+        data = self.my_data[w]
 
-        prof_x = self.my_data[w].profiles[profile].positions
-        prof_y = self.my_data[w].profiles[profile].detectors[d]
-        fr = self.my_data[w].fit_result
-        fit_y = fr[profile][d].curve
+        p = data.profiles[profile]
+        x_stage = np.asarray(p.positions)
+        y_meas = np.asarray(p.detectors[d].values)
+
+        fr = self.my_data[w].fit_result[profile].detectors[d]
+        fit_y = fr.curve
 
         pp.axes.cla()
-        pp.axes.plot(prof_x,
-                     prof_y,
+        pp.axes.plot(x_stage,
+                     y_meas,
                      label="Measured",
                      linestyle="dotted",
                      color="blue")
-        pp.axes.plot(prof_x,
-                     fit_y,
-                     label="Fit",
-                     linestyle="-",
-                     color="orange")
-
-        pp.axes.set_xlabel("Wire Position (µm)")
+        pp.axes.set_xlabel("Wire Position (stage, µm)")
         detector_label = "% Beam Loss" if d == "TMITLOSS" else f"{d} Counts"
         pp.axes.set_ylabel(detector_label)
+
+        scale = 1 if profile == "u" else np.cos(np.deg2rad(45))
+        def stage_to_beam(x):
+            return x * scale
+
+        def beam_to_stage(x):
+            return x / scale
+
+        x_beam_fit = np.asarray(fr.positions)
+        y_fit = np.asarray(fr.curve)
+        pp.axes.plot(beam_to_stage(x_beam_fit),
+                     y_fit,
+                     label="Fitted",
+                     linestyle="-")
+
+        secax = pp.axes.secondary_xaxis(
+            "top",
+            functions=(stage_to_beam, beam_to_stage),
+        )
+
+        pp.axes.set_title(f"{w} {profile.upper()} Profile for {d}")
 
         pp.axes.legend(loc="upper right")
         pp.axes.grid(True, which="both", linestyle="--", alpha=0.6)
 
+        amp_off_units = % if d =="TMITLOSS" else "Counts"
+
         params_text = (
-            f"Mean: {fr[profile][d].mean:.1f} µm\n"
-            f"Sigma: {fr[profile][d].sigma:.1f} µm\n"
-            f"Amplitude: {fr[profile][d].amplitude:.1f} %\n"
-            f"Offset: {fr[profile][d].offset:.1f} %")
+            f"Mean: {fr.mean:.1f} µm\n"
+            f"Sigma: {fr.sigma:.1f} µm\n"
+            f"Amplitude: {fr.amplitude:.1f} {amp_off_units}\n"
+            f"Offset: {fr.offset:.1f} {amp_off_units}")
 
         pp.axes.tick_params(axis='both', which='major')
         pp.axes.text(

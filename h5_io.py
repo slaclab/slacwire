@@ -9,8 +9,14 @@ def save_measurement_result(result, filepath: str):
     Save a measurement result (e.g. EmittanceMeasurementResult)
     to a desired filepath (e.g. /path/to/file/my_result.h5)
     """
+    # Handle namedtuples and dataclasses
+    if hasattr(result, '_asdict'):
+        items = result._asdict().items()
+    else:
+        items = vars(result).items()
+
     with h5py.File(filepath, "w") as h5f:
-        for field_name, value in result:
+        for field_name, value in items:
             # Save single arrays
             if isinstance(value, np.ndarray):
                 h5f.create_dataset(field_name, data=value)
