@@ -250,13 +250,13 @@ class WireScanGUI(Display):
         d = self.measurement.detector
         pp = self.plots.profile_plot
         profile = self.plots.profile_control.profile.lower()
-        data = self.my_data[w]
+        result = self.my_results[w]
 
-        p = data.profiles[profile]
+        p = result.profiles[profile]
         x_stage = np.asarray(p.positions)
         y_meas = np.asarray(p.detectors[d].values)
 
-        fr = self.my_data[w].fit_result[profile].detectors[d]
+        fr = result.fit_result[profile].detectors[d]
         fit_y = fr.curve
 
         pp.axes.cla()
@@ -293,7 +293,7 @@ class WireScanGUI(Display):
         pp.axes.legend(loc="upper right")
         pp.axes.grid(True, which="both", linestyle="--", alpha=0.6)
 
-        amp_off_units = % if d =="TMITLOSS" else "Counts"
+        amp_off_units = "%" if d == "TMITLOSS" else "Counts"
 
         params_text = (
             f"Mean: {fr.mean:.1f} µm\n"
