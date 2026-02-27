@@ -6,8 +6,8 @@ from pydm import Display
 from qtpy.QtWidgets import QVBoxLayout, QWidget, QFileDialog
 from PyQt5.QtCore import pyqtSignal, QThread
 from lcls_tools.common.devices.reader import create_wire
-from lcls_tools.common.measurements.wire_scan import WireBeamProfileMeasurement
-from lcls_tools.common.measurements.nc_wire_scan import NCWireBeamProfileMeasurement
+from lcls_tools.common.measurements.ws_collection import WireMeasurementCollection
+from lcls_tools.common.measurements.ws_analysis import WireMeasurementAnalysis
 from lcls_tools.common.measurements.wire_scan_results import (
     WireBeamProfileMeasurementResult,
 )
@@ -36,8 +36,14 @@ class WireScanThread(QThread):
 
     def run(self):
         try:
-            result = self.scan_obj.measure()
-            self.scan_complete.emit(self.wire_name, result)
+            beam_rate = self.scan_obj.beam_profile_device.beam_rate
+            if beam_rate <= 120:
+                data = self.scan_obj.measure(scan_type="step")
+            elif beam_rate > 16000:
+                raise ValueError(f"Beam rate {beam_rate} is too high for on-the-fly scanning.")
+            else:
+                data = self.scan_obj.measure(scan_type="on_the_fly")
+            self.scan_complete.emit(self.wire_name, data)
         except Exception as e:
             self.scan_failed.emit(self.wire_name, e)
 
@@ -50,8 +56,10 @@ class WireScanGUI(Display):
                                           args=args,
                                           macros=None)
 
-        self.my_data = {}
         self.my_scans = {}
+        self.my_data = {}
+        self.my_analysis = {}
+        self.my_results = {}
         self.my_save_files = {}
 
         filepath = "/usr/local/lcls/tools/python/hla/slacwire"
@@ -123,14 +131,10 @@ class WireScanGUI(Display):
         w = self.measurement.wire
 
         if w not in self.my_scans:
-            if self.nav.beampath.startswith("SC"):
-                self.my_scans[w] = WireBeamProfileMeasurement(
-                    beam_profile_device=self.measurement.active_wire,
-                    beampath=self.nav.beampath)
-            elif self.nav.beampath.startswith("CU"):
-                self.my_scans[w] = NCWireBeamProfileMeasurement(
-                    beam_profile_device=self.measurement.active_wire,
-                    beampath=self.nav.beampath)
+            self.my_scans[w] = WireMeasurementCollection(
+                beam_profile_device=self.measurement.active_wire,
+                beampath=self.nav.beampath
+            )
 
             self.logger.info("Scan object made for %s", w)
 
@@ -142,8 +146,15 @@ class WireScanGUI(Display):
     def on_scan_complete(self, wire_name, data):
         # Re-enable the start button
         self.ui.startButton.setEnabled(True)
+
         # Store the data
         self.my_data[wire_name] = data
+
+        # Analyze the data
+        analysis = WireMeasurementAnalysis(collection_result=data)
+        self.my_analysis[wire_name] = analysis
+        self.my_results[wire_name] = self.my_analysis[wire_name].analyze()
+
         # Prepare the save file path
         out_dir = dated_dir()
         dest = out_dir / f"WireScan-{wire_name}-{datetime.now():%Y-%m-%d-%H%M%S}.hdf5"
@@ -159,9 +170,9 @@ class WireScanGUI(Display):
 
     def save_callback(self):
         w = self.measurement.wire
-        if w in self.my_data:
+        if w in self.my_results:
             dest = self.my_save_files[w]
-            save_measurement_result(self.my_data[w], dest)
+            save_measurement_result(self.my_results[w], dest)
             self.logger.info(f"Data saved to {dest}")
         else:
             self.logger.info(f"No data for {w} to save!")
