@@ -370,25 +370,33 @@ class WireScanSuite:
             show: Whether to display plots
             save_plots: Whether to save plots as PNG files
         """
-        otf_data = self.otf_scan(device)
-        self.results["otf"].setdefault(wire, []).append(otf_data)
-        path = self.save_run(otf_data, f"OTF_{wire}") if save else None
-        entry = self._log_run("otf", wire, filepath=path)
-
-        fig_traj = self.plot_trajectory(otf_data, wire)
-        self._handle_plot(
-            fig_traj, entry, f"OTF_Trajectory_{wire}", show, save_plots
-        )
-
-        for profile in self.profiles:
-            fig_prof = self.plot_profile(otf_data, profile, wire)
-            self._handle_plot(
-                fig_prof,
-                entry,
-                f"OTF_Profile_{profile}_{wire}",
-                show,
-                save_plots,
+        try:
+            otf_data = self.otf_scan(device)
+            self.results["otf"].setdefault(wire, []).append(otf_data)
+            path = (
+                self.save_run(otf_data, f"OTF_{wire}") if save else None
             )
+            entry = self._log_run("otf", wire, filepath=path)
+
+            fig_traj = self.plot_trajectory(otf_data, wire)
+            self._handle_plot(
+                fig_traj, entry, f"OTF_Trajectory_{wire}", show, save_plots
+            )
+
+            for profile in self.profiles:
+                fig_prof = self.plot_profile(otf_data, profile, wire)
+                self._handle_plot(
+                    fig_prof,
+                    entry,
+                    f"OTF_Profile_{profile}_{wire}",
+                    show,
+                    save_plots,
+                )
+        except Exception as e:
+            self._log_run(
+                "otf", wire, status="error", error=str(e)
+            )
+            raise
 
     def _run_step(self, device, wire, save, show, save_plots):
         """Execute a complete step scan with optional plotting and saving.
@@ -403,10 +411,33 @@ class WireScanSuite:
             show: Whether to display plots
             save_plots: Whether to save plots as PNG files
         """
-        step_data = self.step_scan(device)
-        self.results["step"].setdefault(wire, []).append(step_data)
-        path = self.save_run(step_data, f"Step_{wire}") if save else None
-        entry = self._log_run("step", wire, filepath=path)
+        try:
+            step_data = self.step_scan(device)
+            self.results["step"].setdefault(wire, []).append(step_data)
+            path = (
+                self.save_run(step_data, f"Step_{wire}") if save else None
+            )
+            entry = self._log_run("step", wire, filepath=path)
+
+            fig_traj = self.plot_trajectory(step_data, wire)
+            self._handle_plot(
+                fig_traj, entry, f"Step_Trajectory_{wire}", show, save_plots
+            )
+
+            for profile in self.profiles:
+                fig_prof = self.plot_profile(step_data, profile, wire)
+                self._handle_plot(
+                    fig_prof,
+                    entry,
+                    f"Step_Profile_{profile}_{wire}",
+                    show,
+                    save_plots,
+                )
+        except Exception as e:
+            self._log_run(
+                "step", wire, status="error", error=str(e)
+            )
+            raise
 
         fig_traj = self.plot_trajectory(step_data, wire)
         self._handle_plot(

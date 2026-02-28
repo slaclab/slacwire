@@ -272,6 +272,13 @@ class WireScanSuiteGUI(Display):
 
     def on_scan_failure(self, wire_identifier: str, message: str):
         self.ui.startButton.setEnabled(True)
+        wire_name = wire_identifier.split(":")[0]
+        self.suite._log_run(
+            method="unknown",
+            wire=wire_name,
+            status="error",
+            error=message,
+        )
         self.logger.exception(
             "Scan failed for %s: %s",
             wire_identifier,
