@@ -20,7 +20,7 @@ import logging
 from lcls_tools.common.logger.file_logger import custom_logger
 from datetime import datetime
 import physicselog as elog
-from h5_io import save_measurement_result, load_measurement_result
+from lcls_tools.common.measurements.ws_analysis_results import load_from_h5
 
 
 class WireScanThread(QThread):
@@ -172,7 +172,7 @@ class WireScanGUI(Display):
         w = self.measurement.wire
         if w in self.my_results:
             dest = self.my_save_files[w]
-            save_measurement_result(self.my_results[w], dest)
+            self.my_results[w].save_to_h5(dest)
             self.logger.info(f"Data saved to {dest}")
         else:
             self.logger.info(f"No data for {w} to save!")
@@ -182,7 +182,7 @@ class WireScanGUI(Display):
             file_path, _ = QFileDialog.getOpenFileName(self, "Select a file")
             if file_path:
                 try:
-                    load_measurement_result(file_path, WireBeamProfileMeasurementResult)
+                    return load_from_h5(file_path)
                 except Exception as e:
                     self.logger.info(f"Failed to load data: {e}")
                     return None

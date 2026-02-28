@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -30,10 +31,15 @@ class WireScanSuite:
         """Initialize the wire scan suite after dataclass construction.
 
         Creates device instances and ensures output directories exist.
+        Loads existing run registry if available.
         """
         self.build_devices()
         self.outdir.mkdir(parents=True, exist_ok=True)
         self.plotdir.mkdir(parents=True, exist_ok=True)
+        self._load_registry()
+        self.run_counter = (
+            max((entry["run_id"] for entry in self.run_registry), default=0)
+        )
 
     def _stamp(self) -> str:
         """Generate a timestamp string for file naming.
@@ -42,6 +48,52 @@ class WireScanSuite:
             str: Timestamp in format YYYYMMDD_HHMMSS
         """
         return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    def _registry_path(self) -> Path:
+        """Get the path to the run registry JSON file.
+
+        Returns:
+            Path: Path to ws_run_registry.json in outdir
+        """
+        return self.outdir / "ws_run_registry.json"
+
+    def _load_registry(self):
+        """Load run registry from JSON file if it exists.
+
+        Populates self.run_registry with existing entries.
+        If file doesn't exist or is invalid, starts with empty registry.
+        """
+        registry_file = self._registry_path()
+        if not registry_file.exists():
+            return
+
+        try:
+            with open(registry_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                if isinstance(loaded, list):
+                    self.run_registry = loaded
+        except (json.JSONDecodeError, OSError) as e:
+            # Log error but continue with empty registry
+            print(
+                f"Warning: Could not load registry from {registry_file}: {e}"
+            )
+
+    def _save_registry(self):
+        """Save run registry to JSON file atomically.
+
+        Writes to a temporary file first, then renames to prevent corruption.
+        """
+        registry_file = self._registry_path()
+        temp_file = registry_file.with_suffix(".json.tmp")
+
+        try:
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(self.run_registry, f, indent=2)
+            temp_file.replace(registry_file)
+        except OSError as e:
+            print(f"Warning: Could not save registry to {registry_file}: {e}")
+            if temp_file.exists():
+                temp_file.unlink()
 
     def _make_device(self, wire: str):
         """Create a wire device instance.
@@ -90,6 +142,7 @@ class WireScanSuite:
             "error": error,
         }
         self.run_registry.append(entry)
+        self._save_registry()
         return entry
 
     def _latest_run(self, method: str, wire: str):

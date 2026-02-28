@@ -1,17 +1,14 @@
-import io
 import importlib
 import logging
 from datetime import datetime
 from pathlib import Path
 
-import matplotlib.image as mpimg
+import numpy as np
 import yaml
 from pydm import Display
 from PyQt5.QtCore import QThread, pyqtSignal
 from qtpy.QtWidgets import QFileDialog, QVBoxLayout, QWidget
 
-from h5_io import load_measurement_result
-from save_util import dated_dir
 from widgets.measurement import MeasurementWidget, extract_measurement_data
 from widgets.navigation import NavigationWidget
 from widgets.plots import PlotWidget
@@ -82,9 +79,8 @@ class WireScanSuiteGUI(Display):
     dataChanged = pyqtSignal()
 
     def __init__(self, parent=None, args=None, macros=None):
-        super().__init__(parent=parent, args=args, macros=macros)
-
         self.base_path = Path(__file__).resolve().parent
+        super().__init__(parent=parent, args=args, macros=macros)
         yaml_data = self._load_yaml()
         area_to_wires = extract_measurement_data(yaml_data)
 
@@ -117,9 +113,25 @@ class WireScanSuiteGUI(Display):
         with open(yaml_path, "r", encoding="utf-8") as stream:
             return yaml.safe_load(stream)
 
+    def _dated_dir(self, dt: datetime | None = None) -> Path:
+        """Create and return dated directory for wire scan data.
+
+        Args:
+            dt: Optional datetime to use for directory structure.
+                Defaults to current time.
+
+        Returns:
+            Path to /u1/lcls/physics/data/wire_scan/YYYY/MM/DD/
+        """
+        base_dir = Path("/u1/lcls/physics/data/wire_scan")
+        dt = dt or datetime.now()
+        path = base_dir / f"{dt:%Y}" / f"{dt:%m}" / f"{dt:%d}"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def _safe_output_dir(self) -> Path:
         try:
-            return dated_dir()
+            return self._dated_dir()
         except Exception:
             fallback = (
                 self.base_path
@@ -182,9 +194,9 @@ class WireScanSuiteGUI(Display):
             )
             custom_logger = module.custom_logger
 
-            return custom_logger(log_file=log_dest, name="ws_suite_gui_logger")
+            return custom_logger(log_file=log_dest, name="wire_scan_logger")
         except Exception:
-            logger = logging.getLogger("ws_suite_gui_logger")
+            logger = logging.getLogger("wire_scan_logger")
             logger.handlers.clear()
             file_handler = logging.FileHandler(log_dest)
             file_handler.setFormatter(
@@ -279,17 +291,6 @@ class WireScanSuiteGUI(Display):
 
         return self.loaded_results.get(wire_name)
 
-    def _render_figure_on_canvas(self, fig, canvas):
-        buffer = io.BytesIO()
-        fig.savefig(buffer, format="png", dpi=150, bbox_inches="tight")
-        buffer.seek(0)
-
-        canvas.axes.cla()
-        canvas.axes.imshow(mpimg.imread(buffer, format="png"))
-        canvas.axes.axis("off")
-        canvas.draw()
-        fig.clear()
-
     def save_callback(self):
         wire = self.measurement.wire
         data = self._latest_result_for_wire(wire)
@@ -309,16 +310,15 @@ class WireScanSuiteGUI(Display):
         if not file_path:
             return
 
-        result_class = self._wire_result_class()
-        if result_class is None:
+        load_func = self._get_load_function()
+        if load_func is None:
             self.logger.info(
-                "Could not import WireBeamProfileMeasurementResult "
-                "for loading."
+                "Could not import load_from_h5 function for loading."
             )
             return
 
         try:
-            result = load_measurement_result(file_path, result_class)
+            result = load_func(file_path)
         except Exception as exc:
             self.logger.info("Failed to load data: %s", exc)
             return
@@ -332,12 +332,12 @@ class WireScanSuiteGUI(Display):
         self.logger.info("Successfully loaded data for %s", wire_name)
         self.dataChanged.emit()
 
-    def _wire_result_class(self):
+    def _get_load_function(self):
         try:
             module = importlib.import_module(
-                "lcls_tools.common.measurements.wire_scan_results"
+                "lcls_tools.common.measurements.ws_analysis_results"
             )
-            return module.WireBeamProfileMeasurementResult
+            return module.load_from_h5
         except Exception:
             return None
 
@@ -378,15 +378,52 @@ class WireScanSuiteGUI(Display):
 
     def update_trajectory_plot(self):
         wire = self.measurement.wire
+        detector = self.measurement.detector
+        trajectory_plot = self.plots.trajectory_plot
         data = self._latest_result_for_wire(wire)
         if data is None:
             return
 
-        fig = self.suite.plot_trajectory(data, wire)
-        self._render_figure_on_canvas(fig, self.plots.trajectory_plot)
+        traj_wire = np.asarray(data.collection_result.raw_data[wire])
+        scan_points = np.arange(len(traj_wire))
+        traj_detector = np.asarray(data.collection_result.raw_data[detector])
+        detector_label = (
+            "% Beam Loss" if detector == "TMITLOSS" else f"{detector} Counts"
+        )
+
+        trajectory_plot.figure.clf()
+        ax1 = trajectory_plot.figure.add_subplot(1, 1, 1)
+        ax2 = ax1.twinx()
+        trajectory_plot.axes = ax1
+        trajectory_plot.secondary_axes = ax2
+
+        ax1.plot(
+            scan_points,
+            traj_wire,
+            label="Wire Position (µm)",
+            color="#1f77b4",
+        )
+        ax1.set_xlabel("Scan Point")
+        ax1.set_ylabel("Wire Position (µm)", color="#1f77b4")
+        ax1.tick_params(axis="y", labelcolor="#1f77b4")
+
+        ax2.plot(
+            scan_points,
+            traj_detector,
+            label=detector_label,
+            color="#d95f02",
+        )
+        ax2.set_ylabel(detector_label, color="#d95f02")
+        ax2.tick_params(axis="y", labelcolor="#d95f02")
+
+        ax1.set_title(f"{wire} Motion Trajectory")
+        trajectory_plot.figure.tight_layout()
+        trajectory_plot.draw()
 
     def update_profile_plot(self):
         wire = self.measurement.wire
+        detector = self.measurement.detector
+        profile_plot = self.plots.profile_plot
         data = self._latest_result_for_wire(wire)
         if data is None:
             return
@@ -395,8 +432,75 @@ class WireScanSuiteGUI(Display):
         if not profile:
             return
 
-        fig = self.suite.plot_profile(data, profile, wire)
-        self._render_figure_on_canvas(fig, self.plots.profile_plot)
+        p = data.profiles[profile]
+        x_stage = np.asarray(p.positions)
+        y_meas = np.asarray(p.detectors[detector].values)
+
+        fit_result = data.fit_result[profile].detectors[detector]
+
+        profile_plot.figure.clf()
+        profile_plot.axes = profile_plot.figure.add_subplot(1, 1, 1)
+        profile_plot.axes.plot(
+            x_stage,
+            y_meas,
+            label="Measured",
+            linestyle="dotted",
+            color="blue",
+        )
+        profile_plot.axes.set_xlabel("Wire Position (stage, µm)")
+        detector_label = (
+            "% Beam Loss" if detector == "TMITLOSS" else f"{detector} Counts"
+        )
+        profile_plot.axes.set_ylabel(detector_label)
+
+        scale = 1 if profile == "u" else np.cos(np.deg2rad(45))
+
+        def stage_to_beam(x):
+            return x * scale
+
+        def beam_to_stage(x):
+            return x / scale
+
+        x_beam_fit = np.asarray(fit_result.positions)
+        y_fit = np.asarray(fit_result.curve)
+        profile_plot.axes.plot(
+            beam_to_stage(x_beam_fit),
+            y_fit,
+            label="Fitted",
+            linestyle="-",
+        )
+
+        secax = profile_plot.axes.secondary_xaxis(
+            "top",
+            functions=(stage_to_beam, beam_to_stage),
+        )
+        secax.set_xlabel("Wire Position (beam, µm)")
+
+        profile_plot.axes.set_title(
+            f"{wire} {profile.upper()} Profile for {detector}"
+        )
+        profile_plot.axes.legend(loc="upper right")
+        profile_plot.axes.grid(True, which="both", linestyle="--", alpha=0.6)
+
+        amp_off_units = "%" if detector == "TMITLOSS" else "Counts"
+        params_text = (
+            f"Mean: {fit_result.mean:.1f} µm\n"
+            f"Sigma: {fit_result.sigma:.1f} µm\n"
+            f"Amplitude: {fit_result.amplitude:.1f} {amp_off_units}\n"
+            f"Offset: {fit_result.offset:.1f} {amp_off_units}"
+        )
+        profile_plot.axes.text(
+            0.95,
+            0.15,
+            params_text,
+            transform=profile_plot.axes.transAxes,
+            verticalalignment="bottom",
+            horizontalalignment="right",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+
+        profile_plot.figure.tight_layout()
+        profile_plot.draw()
 
     def update_plots(self):
         if self._latest_result_for_wire(self.measurement.wire) is not None:
