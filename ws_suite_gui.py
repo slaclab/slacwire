@@ -279,7 +279,7 @@ class WireScanSuiteGUI(Display):
             status="error",
             error=message,
         )
-        self.logger.exception(
+        self.logger.error(
             "Scan failed for %s: %s",
             wire_identifier,
             message,
