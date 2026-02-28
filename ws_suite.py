@@ -53,9 +53,10 @@ class WireScanSuite:
         """Get the path to the run registry JSON file.
 
         Returns:
-            Path: Path to ws_run_registry.json in outdir
+            Path: Path to ws_run_registry.json in base scan directory
         """
-        return self.outdir / "ws_run_registry.json"
+        base_dir = Path("/u1/lcls/physics/data/wire_scan")
+        return base_dir / "ws_run_registry.json"
 
     def _load_registry(self):
         """Load run registry from JSON file if it exists.
@@ -84,14 +85,17 @@ class WireScanSuite:
         Writes to a temporary file first, then renames to prevent corruption.
         """
         registry_file = self._registry_path()
-        temp_file = registry_file.with_suffix(".json.tmp")
+        registry_file.parent.mkdir(parents=True, exist_ok=True)
+        temp_file = registry_file.parent / (registry_file.name + ".tmp")
 
         try:
             with open(temp_file, "w", encoding="utf-8") as f:
                 json.dump(self.run_registry, f, indent=2)
             temp_file.replace(registry_file)
         except OSError as e:
-            print(f"Warning: Could not save registry to {registry_file}: {e}")
+            print(
+                f"Warning: Could not save registry to {registry_file}: {e}"
+            )
             if temp_file.exists():
                 temp_file.unlink()
 
