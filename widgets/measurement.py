@@ -80,8 +80,8 @@ class MeasurementWidget(QGroupBox):
         self.detector_combo.blockSignals(True)
         self.detector_combo.clear()
 
-        lblms = getattr(self.my_wire.metadata, "lblms", [])
-        for detector_string in lblms:
+        detectors = getattr(self.my_wire.metadata, "detectors", [])
+        for detector_string in detectors:
             detector, area = detector_string.split(":")
             self.detector_combo.addItem(detector, area)
 
@@ -92,8 +92,9 @@ class MeasurementWidget(QGroupBox):
         self.bpm_list.clear()
 
         bpms = getattr(self.my_wire.metadata, "bpms_before_wire", [])
-        for bpm in bpms:
-            self.bpm_list.addItem(bpm)
+        if bpms:
+            for bpm in bpms:
+                self.bpm_list.addItem(bpm)
 
         self.bpm_list.blockSignals(False)
 
