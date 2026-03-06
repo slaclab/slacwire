@@ -1,4 +1,5 @@
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -13,9 +14,49 @@ from lcls_tools.common.measurements.ws_analysis import (
     WireMeasurementAnalysis,
 )
 
+logger = logging.getLogger("wire_scan_logger")
+
 
 @dataclass
 class WireScanSuite:
+    """High-level orchestration layer for wire scanner beam profile measurements.
+
+    Transforms low-level EPICS device controls (wire positioning, data collection,
+    Gaussian fitting) from lcls_tools.common into a complete scientific data
+    acquisition system with human-readable results, automated plotting, and
+    persistent run tracking.
+
+    This class bridges the gap between the raw measurement/analysis primitives
+    (WireMeasurementCollection, WireMeasurementAnalysis, create_wire) and
+    operational requirements by providing:
+
+    - Batch processing: Run multiple wires and scan types in sequence
+    - Data provenance: Persistent JSON registry of all runs with metadata
+    - Automated visualization: Publication-ready trajectory and profile plots
+    - Structured file management: Timestamped HDF5 files and PNG plots
+    - Simplified API: Single method calls replace multi-step workflows
+
+    Typical usage:
+        >>> suite = WireScanSuite(
+        ...     wires=["WS28144:L3", "WS27644:L3"],
+        ...     beampath="CU_HXR",
+        ...     detector="PMT29150"
+        ... )
+        >>> suite.run(do_otf=True, do_step=True, save=True, save_plots=True)
+        # Executes scans, saves data/plots, updates run registry
+
+    Attributes:
+        wires: Wire identifiers in "NAME:AREA" format (e.g., "WS28144:L3")
+        devices: Cached wire device instances created via create_wire()
+        beampath: Accelerator beampath identifier (e.g., "CU_HXR", "SC_BSYD")
+        detector: Primary detector for measurements (e.g., "PMT29150")
+        outdir: Output directory for HDF5 data files
+        plotdir: Output directory for PNG plot files
+        profiles: Profile dimensions to measure ("x", "y", "u")
+        results: Dict storing measurement results keyed by wire name
+        run_registry: List of run metadata entries for audit trail
+        run_counter: Incremental run ID counter
+    """
     wires: list = field(default_factory=lambda: ["WS28144:L3"])
     devices: dict = field(default_factory=dict)
     beampath: str = "CU_HXR"
@@ -23,7 +64,7 @@ class WireScanSuite:
     outdir: Path = Path("/home/physics/kabanaty/sandbox/ws_suite")
     plotdir: Path = Path("/home/physics/kabanaty/sandbox/ws_suite/plots/")
     profiles: tuple[str, ...] = ("x", "y", "u")
-    results: dict = field(default_factory=lambda: {"otf": {}, "step": {}})
+    results: dict = field(default_factory=dict)
     run_registry: list = field(default_factory=list)
     run_counter: int = 0
 
@@ -75,8 +116,8 @@ class WireScanSuite:
                     self.run_registry = loaded
         except (json.JSONDecodeError, OSError) as e:
             # Log error but continue with empty registry
-            print(
-                f"Warning: Could not load registry from {registry_file}: {e}"
+            logger.warning(
+                f"Could not load registry from {registry_file}: {e}"
             )
 
     def _save_registry(self):
@@ -93,8 +134,8 @@ class WireScanSuite:
                 json.dump(self.run_registry, f, indent=2)
             temp_file.replace(registry_file)
         except OSError as e:
-            print(
-                f"Warning: Could not save registry to {registry_file}: {e}"
+            logger.warning(
+                f"Could not save registry to {registry_file}: {e}"
             )
             if temp_file.exists():
                 temp_file.unlink()
@@ -149,22 +190,21 @@ class WireScanSuite:
         self._save_registry()
         return entry
 
-    def _latest_run(self, method: str, wire: str):
-        """Retrieve the most recent run result for a given method and wire.
+    def _latest_run(self, wire: str):
+        """Retrieve the most recent run result for a given wire.
 
         Args:
-            method: Measurement method ("otf" or "step")
             wire: Wire identifier
 
         Returns:
             Latest measurement result data
 
         Raises:
-            KeyError: If no results exist for the specified method and wire
+            KeyError: If no results exist for the specified wire
         """
-        runs = self.results.get(method, {}).get(wire, [])
+        runs = self.results.get(wire, [])
         if not runs:
-            msg = f"No {method} results found for {wire}. Run it first."
+            msg = f"No results found for {wire}. Run it first."
             raise KeyError(msg)
         return runs[-1]
 
@@ -372,7 +412,7 @@ class WireScanSuite:
         """
         try:
             otf_data = self.otf_scan(device)
-            self.results["otf"].setdefault(wire, []).append(otf_data)
+            self.results.setdefault(wire, []).append(otf_data)
             path = (
                 self.save_run(otf_data, f"OTF_{wire}") if save else None
             )
@@ -413,7 +453,7 @@ class WireScanSuite:
         """
         try:
             step_data = self.step_scan(device)
-            self.results["step"].setdefault(wire, []).append(step_data)
+            self.results.setdefault(wire, []).append(step_data)
             path = (
                 self.save_run(step_data, f"Step_{wire}") if save else None
             )
