@@ -62,7 +62,7 @@ class WireScanSuiteThread(QThread):
                 method = "otf"
                 data = self.suite.otf_scan(device)
 
-            self.suite.results[method].setdefault(wire_name, []).append(data)
+            self.suite.results.setdefault(wire_name, []).append(data)
             save_path = None
             if self.save_data:
                 save_path = self.suite.save_run(
@@ -286,16 +286,11 @@ class WireScanSuiteGUI(Display):
         )
 
     def _latest_result_for_wire(self, wire_name: str):
-        run = self.current_runs.get(wire_name)
-        if run:
-            method = run.get("method")
-            if method and wire_name in self.suite.results.get(method, {}):
-                return self.suite._latest_run(method, wire_name)
+        # Check if we have results for this wire in the suite
+        if wire_name in self.suite.results:
+            return self.suite._latest_run(wire_name)
 
-        for method in ("otf", "step"):
-            if wire_name in self.suite.results.get(method, {}):
-                return self.suite._latest_run(method, wire_name)
-
+        # Fall back to loaded results if no suite results
         return self.loaded_results.get(wire_name)
 
     def save_callback(self):
