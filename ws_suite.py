@@ -497,7 +497,7 @@ class WireScanSuite:
     def run(
         self,
         do_otf: bool = False,
-        do_step: bool = True,
+        do_step: bool = False,
         save: bool = True,
         show: bool = True,
         save_plots: bool = True,
@@ -517,6 +517,17 @@ class WireScanSuite:
         for wire in self.wires:
             wire_name = wire.split(":")[0]
             device = self.devices[wire]
+            if not do_otf and not do_step:
+                logger.warning("No scan type selected."
+                               "Selecting scan method based on beam rate.")
+                if device.beam_rate <= 120:
+                    do_step = True
+                elif device.beam_rate > 120 and device.beam_rate <= 16600:
+                    do_otf = True
+                else:
+                    logger.error(f"Beam rate {device.beam_rate} is out of"
+                                 f"expected range for both OTF and step scans."
+                                 f"Skipping {wire_name}.")
             if do_otf:
                 self._run_otf(device, wire_name, save, show, save_plots)
             if do_step:
