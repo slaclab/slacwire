@@ -82,6 +82,28 @@ class WireScanSuite:
             max((entry["run_id"] for entry in self.run_registry), default=0)
         )
 
+    def __repr__(self) -> str:
+        """Return a concise representation of suite state for debugging.
+
+        Includes instantiated wires, active beampath, and whether results
+        have been collected.
+        """
+        instantiated_wires = sorted(self.devices.keys())
+        result_counts = {
+            wire: len(runs)
+            for wire, runs in self.results.items()
+            if runs
+        }
+        total_results = sum(result_counts.values())
+        has_results = total_results > 0
+
+        return (
+            f"WireScanSuite(beampath={self.beampath!r}, "
+            f"instantiated_wires={instantiated_wires!r}, "
+            f"has_results={has_results}, "
+            f"result_counts={result_counts!r})"
+        )
+
     def _stamp(self) -> str:
         """Generate a timestamp string for file naming.
 
@@ -478,21 +500,6 @@ class WireScanSuite:
                 "step", wire, status="error", error=str(e)
             )
             raise
-
-        fig_traj = self.plot_trajectory(step_data, wire)
-        self._handle_plot(
-            fig_traj, entry, f"Step_Trajectory_{wire}", show, save_plots
-        )
-
-        for profile in self.profiles:
-            fig_prof = self.plot_profile(step_data, profile, wire)
-            self._handle_plot(
-                fig_prof,
-                entry,
-                f"Step_Profile_{profile}_{wire}",
-                show,
-                save_plots,
-            )
 
     def run(
         self,
