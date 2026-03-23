@@ -6,11 +6,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from lcls_tools.common.devices.reader import create_wire
-from lcls_tools.common.measurements.ws_collection import (
+from slac_devices.reader import create_wire
+from slac_measurements.ws_collection import (
     WireMeasurementCollection,
 )
-from lcls_tools.common.measurements.ws_analysis import (
+from slac_measurements.ws_analysis import (
     WireMeasurementAnalysis,
 )
 
@@ -22,7 +22,7 @@ class WireScanSuite:
     """High-level orchestration layer for wire scanner beam profile measurements.
 
     Transforms low-level EPICS device controls (wire positioning, data collection,
-    Gaussian fitting) from lcls_tools.common into a complete scientific data
+    Gaussian fitting) from slac_devices into a complete scientific data
     acquisition system with human-readable results, automated plotting, and
     persistent run tracking.
 
