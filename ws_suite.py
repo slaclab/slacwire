@@ -4,8 +4,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
 from slac_devices.reader import create_wire
 from slac_measurements.ws_collection import (
     WireMeasurementCollection,
@@ -13,8 +11,44 @@ from slac_measurements.ws_collection import (
 from slac_measurements.ws_analysis import (
     WireMeasurementAnalysis,
 )
+from ws_view import WireScanView
 
 logger = logging.getLogger("wire_scan_logger")
+
+
+# Lookup table for wire name to area mapping.
+WIRE_AREA_LOOKUP = {
+    "WS01": "DL1",
+    "WS02": "DL1",
+    "WS03": "DL1",
+    "WS04": "DL1",
+    "WS11": "BC1",
+    "WS12": "BC1",
+    "WS13": "BC1",
+    "WS27644": "L3",
+    "WS28144": "L3",
+    "WS28444": "L3",
+    "WS28744": "L3",
+    "WS0H04": "HTR",
+    "WSDG01": "DIAG0",
+    "WSC104": "COL1",
+    "WSC106": "COL1",
+    "WSC108": "COL1",
+    "WSC110": "COL1",
+    "WSEMIT2": "EMIT2",
+    "WSBP2": "BYP",
+    "WSBP3": "BYP",
+    "WSBP4": "BYP",
+    "WSSP1D": "SPD",
+    "WS31": "LTUH",
+    "WS32": "LTUH",
+    "WS33": "LTUH",
+    "WS34": "LTUH",
+    "WS31B": "LTUS",
+    "WS32B": "LTUS",
+    "WS33B": "LTUS",
+    "WS34B": "LTUS",
+}
 
 
 @dataclass
@@ -38,7 +72,7 @@ class WireScanSuite:
 
     Typical usage:
         >>> suite = WireScanSuite(
-        ...     wires=["WS28144:L3", "WS27644:L3"],
+        ...     wires=["WS28144", "WS27644"],
         ...     beampath="CU_HXR",
         ...     detector="PMT29150"
         ... )
@@ -46,7 +80,7 @@ class WireScanSuite:
         # Executes scans, saves data/plots, updates run registry
 
     Attributes:
-        wires: Wire identifiers in "NAME:AREA" format (e.g., "WS28144:L3")
+        wires: Wire names (e.g., "WS28144")
         devices: Cached wire device instances created via create_wire()
         beampath: Accelerator beampath identifier (e.g., "CU_HXR", "SC_BSYD")
         detector: Primary detector for measurements (e.g., "PMT29150")
@@ -57,7 +91,7 @@ class WireScanSuite:
         run_registry: List of run metadata entries for audit trail
         run_counter: Incremental run ID counter
     """
-    wires: list = field(default_factory=lambda: ["WS28144:L3"])
+    wires: list = field(default_factory=lambda: ["WS28144"])
     devices: dict = field(default_factory=dict)
     beampath: str = "CU_HXR"
     detector: str = "PMT29150"
@@ -67,6 +101,7 @@ class WireScanSuite:
     results: dict = field(default_factory=dict)
     run_registry: list = field(default_factory=list)
     run_counter: int = 0
+    view: WireScanView = field(init=False)
 
     def __post_init__(self):
         """Initialize the wire scan suite after dataclass construction.
@@ -74,20 +109,15 @@ class WireScanSuite:
         Creates device instances and ensures output directories exist.
         Loads existing run registry if available.
         """
-        self.build_devices()
+        self._build_devices()
+        self.view = WireScanView()
         self.outdir.mkdir(parents=True, exist_ok=True)
         self.plotdir.mkdir(parents=True, exist_ok=True)
         self._load_registry()
-        self.run_counter = (
-            max((entry["run_id"] for entry in self.run_registry), default=0)
-        )
+        self.run_counter = self._latest_run_id_from_registry()
 
     def __repr__(self) -> str:
-        """Return a concise representation of suite state for debugging.
-
-        Includes instantiated wires, active beampath, and whether results
-        have been collected.
-        """
+        """Return a concise representation of suite state for debugging."""
         instantiated_wires = sorted(self.devices.keys())
         result_counts = {
             wire: len(runs)
@@ -104,29 +134,45 @@ class WireScanSuite:
             f"result_counts={result_counts!r})"
         )
 
-    def _stamp(self) -> str:
-        """Generate a timestamp string for file naming.
 
-        Returns:
-            str: Timestamp in format YYYYMMDD_HHMMSS
-        """
-        return datetime.now().strftime("%Y%m%d_%H%M%S")
+    def _build_devices(self):
+        """Initialize all wire device instances based on configured wires."""
+        self.devices = {wire: self._make_device(wire) for wire in self.wires}
 
-    def _registry_path(self) -> Path:
-        """Get the path to the run registry JSON file.
+    def latest_run(self, wire: str):
+        """Retrieve the most recent run result for a given wire."""
+        runs = self.results.get(wire, [])
+        if not runs:
+            msg = f"No results found for {wire}. Run it first."
+            raise KeyError(msg)
+        return runs[-1]
 
-        Returns:
-            Path: Path to ws_run_registry.json in base scan directory
-        """
-        base_dir = Path("/u1/lcls/physics/data/wire_scan")
-        return base_dir / "ws_run_registry.json"
+    def _latest_run_id_from_registry(self) -> int:
+        """Return the highest run_id currently persisted in registry file."""
+        registry_file = self._registry_path()
+        if not registry_file.exists():
+            return 0
+
+        try:
+            with open(registry_file, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            if not isinstance(loaded, list):
+                return 0
+
+            max_run_id = 0
+            for entry in loaded:
+                if isinstance(entry, dict) and "run_id" in entry:
+                    try:
+                        run_id = int(entry["run_id"])
+                    except (TypeError, ValueError):
+                        continue
+                    max_run_id = max(max_run_id, run_id)
+            return max_run_id
+        except (json.JSONDecodeError, OSError):
+            return 0
 
     def _load_registry(self):
-        """Load run registry from JSON file if it exists.
-
-        Populates self.run_registry with existing entries.
-        If file doesn't exist or is invalid, starts with empty registry.
-        """
+        """Load run registry from JSON file if it exists."""
         registry_file = self._registry_path()
         if not registry_file.exists():
             return
@@ -142,59 +188,38 @@ class WireScanSuite:
                 f"Could not load registry from {registry_file}: {e}"
             )
 
-    def _save_registry(self):
-        """Save run registry to JSON file atomically.
-
-        Writes to a temporary file first, then renames to prevent corruption.
-        """
-        registry_file = self._registry_path()
-        registry_file.parent.mkdir(parents=True, exist_ok=True)
-        temp_file = registry_file.parent / (registry_file.name + ".tmp")
-
-        try:
-            with open(temp_file, "w", encoding="utf-8") as f:
-                json.dump(self.run_registry, f, indent=2)
-            temp_file.replace(registry_file)
-        except OSError as e:
-            logger.warning(
-                f"Could not save registry to {registry_file}: {e}"
-            )
-            if temp_file.exists():
-                temp_file.unlink()
-
-    def _make_device(self, wire: str):
-        """Create a wire device instance.
-
-        Args:
-            wire: Wire identifier string in format "WIRE_NAME:AREA"
-                (e.g., "WS28144:L3")
-
-        Returns:
-            Wire device instance for the specified area and wire
-        """
-        wire_name, area = wire.split(":")
-        return create_wire(area, wire_name)
-
     def _log_run(
         self,
         method: str,
         wire: str,
+        detector=None,
         filepath=None,
         status="ok",
         error=None,
     ):
-        """Create and register a run entry in the run registry.
+        """Create and register a run entry in the run registry."""
+        def _save_registry():
+            """Save run registry to JSON file atomically."""
+            registry_file = self._registry_path()
+            registry_file.parent.mkdir(parents=True, exist_ok=True)
+            temp_file = registry_file.parent / (registry_file.name + ".tmp")
 
-        Args:
-            method: Measurement method ("otf" or "step")
-            wire: Wire name (without area)
-            filepath: Optional path to saved data file
-            status: Run status ("ok" or "error")
-            error: Optional error message
-
-        Returns:
-            dict: Run entry with run_id, timestamp, and metadata
-        """
+            try:
+                with open(temp_file, "w", encoding="utf-8") as f:
+                    json.dump(self.run_registry, f, indent=2)
+                temp_file.replace(registry_file)
+            except OSError as e:
+                logger.warning(
+                    f"Could not save registry to {registry_file}: {e}"
+                )
+                if temp_file.exists():
+                    temp_file.unlink()
+        # Re-sync with persisted registry so concurrent/new instances
+        # continue from the latest run id on disk.
+        self.run_counter = max(
+            self.run_counter,
+            self._latest_run_id_from_registry(),
+        )
         self.run_counter += 1
         entry = {
             "run_id": self.run_counter,
@@ -202,340 +227,271 @@ class WireScanSuite:
             "method": method,  # "otf" or "step"
             "wire": wire,
             "beampath": self.beampath,
-            "detector": self.detector,
+            "detector": detector,
             "filepath": str(filepath) if filepath else None,
             "plots": [],
             "status": status,  # "ok" or "error"
             "error": error,
         }
         self.run_registry.append(entry)
-        self._save_registry()
+        _save_registry()
         return entry
 
-    def _latest_run(self, wire: str):
-        """Retrieve the most recent run result for a given wire.
+    def _make_device(self, wire: str):
+        """Create a wire device instance."""
+        wire_name, area = self._resolve_wire_and_area(wire)
+        return create_wire(area, wire_name)
 
-        Args:
-            wire: Wire identifier
-
-        Returns:
-            Latest measurement result data
-
-        Raises:
-            KeyError: If no results exist for the specified wire
-        """
-        runs = self.results.get(wire, [])
-        if not runs:
-            msg = f"No results found for {wire}. Run it first."
-            raise KeyError(msg)
-        return runs[-1]
-
-    def build_devices(self):
-        """Initialize all wire device instances based on configured wires."""
-        self.devices = {wire: self._make_device(wire) for wire in self.wires}
-
-    def otf_scan(self, device):
-        """Perform an on-the-fly (OTF) wire beam profile measurement.
-
-        Args:
-            device: Wire device instance
-
-        Returns:
-            Measurement result object containing profile data
-        """
+    def _otf_scan(self, device, rms_detector: str | None = None):
+        """Perform an on-the-fly (OTF) wire beam profile measurement."""
         collection = WireMeasurementCollection(
             beam_profile_device=device, beampath=self.beampath
         )
         raw_data = collection.measure(scan_type="on_the_fly")
         analysis = WireMeasurementAnalysis(collection_result=raw_data)
-        return analysis.analyze()
+        return analysis.analyze(rms_detector=rms_detector)
 
-    def step_scan(self, device):
-        """Perform a step wire beam profile measurement.
+    def _registry_path(self) -> Path:
+        """Get the path to the run registry JSON file."""
+        base_dir = Path("/u1/lcls/physics/data/wire_scan")
+        return base_dir / "ws_run_registry.json"
 
-        Args:
-            device: Wire device instance
+    def _resolve_wire_and_area(self, wire: str) -> tuple[str, str]:
+        """Resolve a wire input to wire name and area."""
+        wire = wire.strip()
 
-        Returns:
-            Measurement result object containing profile data
-        """
+        if not wire:
+            raise ValueError("Wire name cannot be empty.")
+
+        area = WIRE_AREA_LOOKUP.get(wire)
+        if area is None:
+            raise KeyError(
+                f"No area mapping found for wire '{wire}'. Add it to "
+                "WIRE_AREA_LOOKUP."
+            )
+        return wire, area
+
+    def run_all(
+        self,
+        scan_mode: str = "auto",
+        save: bool = True,
+        show: bool = True,
+        save_plots: bool = True,
+        rms_detector: str | None = None,
+    ):
+        """Run all configured wires in the requested scan mode."""
+        for wire in self.wires:
+            self.run_single(
+                wire=wire,
+                scan_mode=scan_mode,
+                save=save,
+                show=show,
+                save_plots=save_plots,
+                rms_detector=rms_detector,
+            )
+
+    def _run_device_scan(
+        self,
+        device,
+        method: str,
+        scan_fn,
+        rms_detector: str | None,
+        file_prefix: str,
+        save: bool,
+        show: bool,
+        save_plots: bool,
+    ):
+        """Execute common scan flow for a single device and method."""
+        def _detector_for_device(device) -> str:
+            """Return detector for a device using metadata.default_detector."""
+            return device.metadata.default_detector
+
+        def _handle_plot(
+            fig, entry, name: str, show: bool, save_plots: bool
+        ):
+            """Helper function to show and/or save a plot figure."""
+            if show:
+                fig.show()
+            if save_plots:
+                png = self.view.save_fig(fig, name, self.plotdir, self._stamp())
+                entry["plots"].append(str(png))
+
+        def _save_run(data, filename: str):
+            """Save measurement data to HDF5 file."""
+            filepath = self.outdir / f"{filename}_{self._stamp()}.h5"
+            data.save_to_h5(filepath)
+            return filepath
+
+        # Resolve one detector choice for the entire scan.
+        default_detector = _detector_for_device(device)
+        selected_detector = (
+            rms_detector if rms_detector is not None else default_detector
+        )
+        if ":" in selected_detector:
+            selected_detector = selected_detector.split(":", 1)[0]
+
+        try:
+            data = scan_fn(device, rms_detector=selected_detector)
+            self.results.setdefault(device.name, []).append(data)
+            path = (
+                _save_run(data, f"{file_prefix}_{device.name}")
+                if save
+                else None
+            )
+            entry = self._log_run(
+                method,
+                device.name,
+                detector=selected_detector,
+                filepath=path,
+            )
+
+            fig_traj = self.view.plot_trajectory(
+                data,
+                device.name,
+                selected_detector,
+            )
+            _handle_plot(
+                fig_traj,
+                entry,
+                f"{file_prefix}_Trajectory_{device.name}",
+                show,
+                save_plots,
+            )
+
+            for profile in self.profiles:
+                fig_prof = self.view.plot_profile(
+                    data,
+                    profile,
+                    device.name,
+                    selected_detector,
+                )
+                _handle_plot(
+                    fig_prof,
+                    entry,
+                    f"{file_prefix}_Profile_{profile}_{device.name}",
+                    show,
+                    save_plots,
+                )
+        except Exception as e:
+            self._log_run(
+                method,
+                device.name,
+                detector=selected_detector,
+                status="error",
+                error=str(e),
+            )
+            raise
+
+    def _run_otf_device(
+        self,
+        device,
+        save,
+        show,
+        save_plots,
+        rms_detector: str | None = None,
+    ):
+        """Execute a complete OTF scan with optional plotting and saving."""
+        self._run_device_scan(
+            device=device,
+            method="otf",
+            scan_fn=self._otf_scan,
+            rms_detector=rms_detector,
+            file_prefix="OTF",
+            save=save,
+            show=show,
+            save_plots=save_plots,
+        )
+
+    def run_single(
+        self,
+        wire: str,
+        scan_mode: str = "auto",
+        save: bool = True,
+        show: bool = True,
+        save_plots: bool = True,
+        rms_detector: str | None = None,
+    ):
+        """Run a single wire in the requested scan mode."""
+        def _auto_scan_mode(device):
+            """Determine scan mode from beam rate."""
+            if device.beam_rate <= 120:
+                return "step"
+            if device.beam_rate <= 16600:
+                return "otf"
+            logger.error(
+                f"Beam rate {device.beam_rate} is out of expected range "
+                f"for both OTF and step scans. Skipping {device.name}."
+            )
+            return None
+
+        def _get_device_for_wire(wire: str):
+            """Get or lazily create a device for a wire name."""
+            if wire not in self.devices:
+                self.devices[wire] = self._make_device(wire)
+            return self.devices[wire]
+
+        wire_name, _ = self._resolve_wire_and_area(wire)
+        device = _get_device_for_wire(wire_name)
+
+        mode = scan_mode.lower()
+        if mode == "auto":
+            selected = _auto_scan_mode(device)
+            if selected is None:
+                return
+            mode = selected
+
+        if mode == "otf":
+            self._run_otf_device(
+                device,
+                save,
+                show,
+                save_plots,
+                rms_detector=rms_detector,
+            )
+            return
+        if mode == "step":
+            self._run_step_device(
+                device,
+                save,
+                show,
+                save_plots,
+                rms_detector=rms_detector,
+            )
+            return
+
+        raise ValueError(
+            f"Invalid scan_mode '{scan_mode}'. Use 'auto', 'otf', or 'step'."
+        )
+
+    def _run_step_device(
+        self,
+        device,
+        save,
+        show,
+        save_plots,
+        rms_detector: str | None = None,
+    ):
+        """Execute a complete step scan with optional plotting and saving."""
+        self._run_device_scan(
+            device=device,
+            method="step",
+            scan_fn=self._step_scan,
+            rms_detector=rms_detector,
+            file_prefix="Step",
+            save=save,
+            show=show,
+            save_plots=save_plots,
+        )
+
+    def _step_scan(self, device, rms_detector: str | None = None):
+        """Perform a step wire beam profile measurement."""
         collection = WireMeasurementCollection(
             beam_profile_device=device, beampath=self.beampath
         )
         raw_data = collection.measure(scan_type="step")
         analysis = WireMeasurementAnalysis(collection_result=raw_data)
-        return analysis.analyze()
+        return analysis.analyze(rms_detector=rms_detector)
 
-    def save_run(self, data, filename: str):
-        """Save measurement data to HDF5 file.
-
-        Args:
-            data: Measurement result data to save
-            filename: Base filename (timestamp appended automatically)
-
-        Returns:
-            Path: Path to saved file
-        """
-        filepath = self.outdir / f"{filename}_{self._stamp()}.h5"
-        data.save_to_h5(filepath)
-        return filepath
-
-    def save_fig(self, fig, name: str):
-        """Save matplotlib figure to PNG file.
-
-        Args:
-            fig: Matplotlib figure object
-            name: Base filename (timestamp appended automatically)
-
-        Returns:
-            Path: Path to saved PNG file
-        """
-        path = self.plotdir / f"{name}_{self._stamp()}.png"
-        fig.savefig(path, dpi=150, bbox_inches="tight")
-        return path
-
-    def plot_trajectory(self, data, wire: str):
-        """Generate a trajectory plot showing wire position and detector
-           counts.
-
-        Creates a dual-axis plot with wire position on left axis and detector
-        counts on right axis.
-
-        Args:
-            data: Measurement result object
-            wire: Wire identifier
-
-        Returns:
-            matplotlib.figure.Figure: Trajectory plot figure
-        """
-        traj = np.asarray(data.collection_result.raw_data[wire])
-        det = np.asarray(data.collection_result.raw_data[self.detector])
-        x = np.arange(len(traj))
-
-        fig, ax1 = plt.subplots()
-        ax2 = ax1.twinx()
-
-        ax1.plot(x, traj, label="Wire Position", color="blue")
-        ax1.set_xlabel("Scan Point")
-        ax1.set_ylabel("Wire Position (um)")
-
-        ax2.plot(x, det, label=f"{self.detector} counts", color="orange")
-        ax2.set_ylabel(f"{self.detector} counts")
-
-        ax1.set_title(f"{wire} Motion Trajectory")
-
-        fig.tight_layout()
-        return fig
-
-    def plot_profile(self, data, profile: str, wire: str):
-        """Generate a beam profile plot with fitted curve and parameters.
-
-        Creates a plot with measured data, fitted curve, and fit parameters
-        (mean, sigma, amplitude, offset) displayed as text.
-
-        Args:
-            data: Measurement result object
-            profile: Profile dimension ("x", "y", or "u")
-            wire: Wire identifier
-
-        Returns:
-            matplotlib.figure.Figure: Profile plot figure
-        """
-        p = data.profiles[profile]
-        x_stage = np.asarray(p.positions)
-        y_meas = np.asarray(p.detectors[self.detector].values)
-
-        fig, ax = plt.subplots()
-        ax.plot(x_stage, y_meas, label="Measured", linestyle="dotted")
-        ax.set_xlabel("Wire Position (stage, µm)")
-        ax.set_ylabel(f"{self.detector} Counts")
-
-        scale = 1 if profile == "u" else np.cos(np.deg2rad(45))
-
-        def stage_to_beam(x):
-            return x * scale
-
-        def beam_to_stage(x):
-            return x / scale
-
-        x_beam_fit = np.asarray(
-            data.fit_result[profile].detectors[self.detector].positions
-        )
-        y_fit = np.asarray(
-            data.fit_result[profile].detectors[self.detector].curve
-        )
-        ax.plot(
-            beam_to_stage(x_beam_fit),
-            y_fit,
-            label="Fitted",
-            linestyle="-",
-        )
-
-        secax = ax.secondary_xaxis(
-            "top",
-            functions=(stage_to_beam, beam_to_stage),
-        )
-        secax.set_xlabel("Wire Position (beam, µm)")
-
-        ax.set_title(f"{wire} {profile.upper()} Profile for {self.detector}")
-
-        fp = data.fit_result[profile].detectors[self.detector]
-        params_text = (
-            f"Mean: {fp.mean:.1f} um\n"
-            f"Sigma: {fp.sigma:.1f} um\n"
-            f"Amp: {fp.amplitude:.1f} %\n"
-            f"Offset: {fp.offset:.1f} %"
-        )
-        plt.text(
-            0.95,
-            0.15,
-            params_text,
-            transform=plt.gca().transAxes,
-            va="top",
-            ha="left",
-            fontsize=10,
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-        )
-
-        ax.legend()
-        fig.tight_layout()
-        return fig
-
-    def _handle_plot(
-        self, fig, entry, name: str, show: bool, save_plots: bool
-    ):
-        """Helper function to show and/or save a plot figure.
-
-        Args:
-            fig: matplotlib figure to process
-            entry: run registry entry to append plot paths to
-            name: base filename for saving (timestamp added automatically)
-            show: whether to display the figure
-            save_plots: whether to save the figure
-        """
-        if show:
-            fig.show()
-        if save_plots:
-            png = self.save_fig(fig, name)
-            entry["plots"].append(str(png))
-
-    def _run_otf(self, device, wire, save, show, save_plots):
-        """Execute a complete OTF scan with optional plotting and saving.
-
-        Performs OTF scan, saves data if requested, generates and displays
-        trajectory and profile plots, and logs the run.
-
-        Args:
-            device: Wire device instance
-            wire: Wire name (without area)
-            save: Whether to save measurement data
-            show: Whether to display plots
-            save_plots: Whether to save plots as PNG files
-        """
-        try:
-            otf_data = self.otf_scan(device)
-            self.results.setdefault(wire, []).append(otf_data)
-            path = (
-                self.save_run(otf_data, f"OTF_{wire}") if save else None
-            )
-            entry = self._log_run("otf", wire, filepath=path)
-
-            fig_traj = self.plot_trajectory(otf_data, wire)
-            self._handle_plot(
-                fig_traj, entry, f"OTF_Trajectory_{wire}", show, save_plots
-            )
-
-            for profile in self.profiles:
-                fig_prof = self.plot_profile(otf_data, profile, wire)
-                self._handle_plot(
-                    fig_prof,
-                    entry,
-                    f"OTF_Profile_{profile}_{wire}",
-                    show,
-                    save_plots,
-                )
-        except Exception as e:
-            self._log_run(
-                "otf", wire, status="error", error=str(e)
-            )
-            raise
-
-    def _run_step(self, device, wire, save, show, save_plots):
-        """Execute a complete step scan with optional plotting and saving.
-
-        Performs step scan, saves data if requested, generates and displays
-        trajectory and profile plots, and logs the run.
-
-        Args:
-            device: Wire device instance
-            wire: Wire name (without area)
-            save: Whether to save measurement data
-            show: Whether to display plots
-            save_plots: Whether to save plots as PNG files
-        """
-        try:
-            step_data = self.step_scan(device)
-            self.results.setdefault(wire, []).append(step_data)
-            path = (
-                self.save_run(step_data, f"Step_{wire}") if save else None
-            )
-            entry = self._log_run("step", wire, filepath=path)
-
-            fig_traj = self.plot_trajectory(step_data, wire)
-            self._handle_plot(
-                fig_traj, entry, f"Step_Trajectory_{wire}", show, save_plots
-            )
-
-            for profile in self.profiles:
-                fig_prof = self.plot_profile(step_data, profile, wire)
-                self._handle_plot(
-                    fig_prof,
-                    entry,
-                    f"Step_Profile_{profile}_{wire}",
-                    show,
-                    save_plots,
-                )
-        except Exception as e:
-            self._log_run(
-                "step", wire, status="error", error=str(e)
-            )
-            raise
-
-    def run(
-        self,
-        do_otf: bool = False,
-        do_step: bool = False,
-        save: bool = True,
-        show: bool = True,
-        save_plots: bool = True,
-    ):
-        """Execute wire scans for all configured wires.
-
-        Performs OTF and/or step scans for each wire with optional data saving
-        and plot display.
-
-        Args:
-            do_otf: Whether to run OTF scans
-            do_step: Whether to run step scans
-            save: Whether to save measurement data
-            show: Whether to display plots
-            save_plots: Whether to save plots as PNG files
-        """
-        for wire in self.wires:
-            wire_name = wire.split(":")[0]
-            device = self.devices[wire]
-            if not do_otf and not do_step:
-                logger.warning("No scan type selected."
-                               "Selecting scan method based on beam rate.")
-                if device.beam_rate <= 120:
-                    do_step = True
-                elif device.beam_rate > 120 and device.beam_rate <= 16600:
-                    do_otf = True
-                else:
-                    logger.error(f"Beam rate {device.beam_rate} is out of"
-                                 f"expected range for both OTF and step scans."
-                                 f"Skipping {wire_name}.")
-            if do_otf:
-                self._run_otf(device, wire_name, save, show, save_plots)
-            if do_step:
-                self._run_step(device, wire_name, save, show, save_plots)
+    def _stamp(self) -> str:
+        """Generate a timestamp string for file naming."""
+        return datetime.now().strftime("%Y%m%d_%H%M%S")
