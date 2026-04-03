@@ -5,13 +5,13 @@ from datetime import datetime
 from pathlib import Path
 
 from slac_devices.reader import create_wire
-from slac_measurements.ws_collection import (
+from slac_measurements.wires.collection import (
     WireMeasurementCollection,
 )
-from slac_measurements.ws_analysis import (
+from slac_measurements.wires.analysis import (
     WireMeasurementAnalysis,
 )
-from ws_view import WireScanView
+from view import WireScanView
 
 logger = logging.getLogger("wire_scan_logger")
 
