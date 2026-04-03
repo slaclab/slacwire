@@ -5,12 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from slac_devices.reader import create_wire
-from slac_measurements.wires.collection import (
-    WireMeasurementCollection,
-)
-from slac_measurements.wires.analysis import (
-    WireMeasurementAnalysis,
-)
+from slac_measurements.wires.scan import WireBeamProfileMeasurement
 from view import WireScanView
 
 logger = logging.getLogger("wire_scan_logger")
@@ -118,7 +113,7 @@ class WireScanSuite:
 
     def __repr__(self) -> str:
         """Return a concise representation of suite state for debugging."""
-        instantiated_wires = sorted(self.devices.keys())
+        instantiated_wires = sorted(self.wires)
         result_counts = {
             wire: len(runs)
             for wire, runs in self.results.items()
@@ -129,11 +124,10 @@ class WireScanSuite:
 
         return (
             f"WireScanSuite(beampath={self.beampath!r}, "
-            f"instantiated_wires={instantiated_wires!r}, "
+            f"wire_list={instantiated_wires!r}, "
             f"has_results={has_results}, "
             f"result_counts={result_counts!r})"
         )
-
 
     def _build_devices(self):
         """Initialize all wire device instances based on configured wires."""
@@ -244,12 +238,11 @@ class WireScanSuite:
 
     def _otf_scan(self, device, rms_detector: str | None = None):
         """Perform an on-the-fly (OTF) wire beam profile measurement."""
-        collection = WireMeasurementCollection(
+        measurement = WireBeamProfileMeasurement(
             beam_profile_device=device, beampath=self.beampath
         )
-        raw_data = collection.measure(scan_type="on_the_fly")
-        analysis = WireMeasurementAnalysis(collection_result=raw_data)
-        return analysis.analyze(rms_detector=rms_detector)
+        # scan.py now orchestrates collection + analysis in one call.
+        return measurement.measure(scan_type="on_the_fly")
 
     def _registry_path(self) -> Path:
         """Get the path to the run registry JSON file."""
@@ -485,12 +478,11 @@ class WireScanSuite:
 
     def _step_scan(self, device, rms_detector: str | None = None):
         """Perform a step wire beam profile measurement."""
-        collection = WireMeasurementCollection(
+        measurement = WireBeamProfileMeasurement(
             beam_profile_device=device, beampath=self.beampath
         )
-        raw_data = collection.measure(scan_type="step")
-        analysis = WireMeasurementAnalysis(collection_result=raw_data)
-        return analysis.analyze(rms_detector=rms_detector)
+        # scan.py now orchestrates collection + analysis in one call.
+        return measurement.measure(scan_type="step")
 
     def _stamp(self) -> str:
         """Generate a timestamp string for file naming."""
