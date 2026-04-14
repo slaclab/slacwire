@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from slac_devices.reader import create_wire
 from slac_measurements.wires.scan import WireBeamProfileMeasurement
@@ -89,7 +90,7 @@ class WireScanSuite:
     wires: list = field(default_factory=lambda: ["WS28144"])
     devices: dict = field(default_factory=dict)
     beampath: str = "CU_HXR"
-    detector: str = "PMT29150"
+    detector: Optional[str] = None
     outdir: Path = Path("/home/physics/kabanaty/sandbox/ws_suite")
     plotdir: Path = Path("/home/physics/kabanaty/sandbox/ws_suite/plots/")
     profiles: tuple[str, ...] = ("x", "y", "u")
