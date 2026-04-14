@@ -13,7 +13,7 @@ from widgets.measurement import MeasurementWidget, extract_measurement_data
 from widgets.navigation import NavigationWidget
 from widgets.plots import PlotWidget
 from widgets.text_logger import attach_logger_to_widget
-from ws_suite import WireScanSuite
+from suite import WireScanSuite
 
 
 class WireScanSuiteThread(QThread):
@@ -37,39 +37,48 @@ class WireScanSuiteThread(QThread):
 
     def run(self):
         try:
-            wire_name, _ = self.wire_identifier.split(":")
+            # Extract wire name from identifier (format: "WIRE:AREA")
+            wire_name = self.wire_identifier.split(":")[0]
+            
+            # Set beampath and detector on suite
             self.suite.beampath = self.beampath
             self.suite.detector = self.detector
-
-            if self.wire_identifier not in self.suite.devices:
-                self.suite.wires = [self.wire_identifier]
-                self.suite.build_devices()
-
-            device = self.suite.devices[self.wire_identifier]
-            beam_rate = device.beam_rate
-
-            if beam_rate <= 120:
-                method = "step"
-                data = self.suite.step_scan(device)
-            elif beam_rate > 16000:
-                raise ValueError(
-                    (
-                        f"Beam rate {beam_rate} is too high "
-                        "for on-the-fly scanning."
-                    )
+            
+            # Use suite's orchestrated run_single() method which handles:
+            # - Device creation/caching
+            # - Auto scan mode detection
+            # - Execution of step or OTF scan
+            # - Data saving and logging
+            self.suite.run_single(
+                wire=wire_name,
+                scan_mode="auto",
+                save=self.save_data,
+                show=False,  # Don't show plots in thread
+                save_plots=False,  # Plots handled by GUI
+            )
+            
+            # Retrieve the latest run data and entry from registry
+            try:
+                data = self.suite.latest_run(wire_name)
+            except KeyError:
+                # No results were produced
+                self.scan_failed.emit(
+                    self.wire_identifier,
+                    f"No data returned from scan for {wire_name}"
                 )
-            else:
-                method = "otf"
-                data = self.suite.otf_scan(device)
-
-            self.suite.results.setdefault(wire_name, []).append(data)
-            save_path = None
-            if self.save_data:
-                save_path = self.suite.save_run(
-                    data,
-                    f"{method.upper()}_{wire_name}",
-                )
-            entry = self.suite._log_run(method, wire_name, filepath=save_path)
+                return
+            
+            # Find the corresponding entry in run_registry (most recent for this wire)
+            entry = None
+            for reg_entry in reversed(self.suite.run_registry):
+                if reg_entry.get("wire") == wire_name:
+                    entry = reg_entry
+                    break
+            
+            if entry is None:
+                entry = {"wire": wire_name, "timestamp": datetime.now().isoformat()}
+            
+            method = entry.get("method", "unknown")
             self.scan_complete.emit(wire_name, method, data, entry)
         except Exception as exc:
             self.scan_failed.emit(self.wire_identifier, str(exc))
@@ -288,7 +297,10 @@ class WireScanSuiteGUI(Display):
     def _latest_result_for_wire(self, wire_name: str):
         # Check if we have results for this wire in the suite
         if wire_name in self.suite.results:
-            return self.suite._latest_run(wire_name)
+            try:
+                return self.suite.latest_run(wire_name)
+            except KeyError:
+                pass
 
         # Fall back to loaded results if no suite results
         return self.loaded_results.get(wire_name)
@@ -300,8 +312,32 @@ class WireScanSuiteGUI(Display):
             self.logger.info("No data for %s to save", wire)
             return
 
-        path = self.suite.save_run(data, f"Manual_{wire}")
-        self.logger.info("Data saved to %s", path)
+        # Save the data to an HDF5 file
+        path = self._save_data_to_file(data, f"Manual_{wire}")
+        if path:
+            self.logger.info("Data saved to %s", path)
+        else:
+            self.logger.error("Failed to save data for %s", wire)
+    
+    def _save_data_to_file(self, data, filename_prefix: str) -> Path | None:
+        """Save measurement data to HDF5 file.
+        
+        Args:
+            data: The measurement data object to save
+            filename_prefix: Prefix for the filename (without timestamp or extension)
+            
+        Returns:
+            Path to saved file, or None if save failed
+        """
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filepath = self.suite.outdir / f"{filename_prefix}_{timestamp}.h5"
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            data.save_to_h5(filepath)
+            return filepath
+        except Exception as e:
+            self.logger.error("Error saving data: %s", str(e))
+            return None
 
     def load_callback(self):
         file_path, _ = QFileDialog.getOpenFileName(
