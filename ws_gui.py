@@ -51,7 +51,7 @@ class WireScanSuiteThread(QThread):
             # - Data saving and logging
             self.suite.run_single(
                 wire=wire_name,
-                scan_mode="auto",
+                scan_mode="otf",            # Force OTF mode for testing! 4/14/26
                 save=self.save_data,
                 show=False,  # Don't show plots in thread
                 save_plots=False,  # Plots handled by GUI
@@ -162,7 +162,7 @@ class WireScanSuiteGUI(Display):
         )
 
     def _create_wire(self, area, name):
-        from lcls_tools.common.devices.reader import create_wire
+        from slac_devices.reader import create_wire
 
         return create_wire(area=area, name=name)
 
