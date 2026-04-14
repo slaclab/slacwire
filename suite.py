@@ -243,7 +243,7 @@ class WireScanSuite:
             beam_profile_device=device, beampath=self.beampath
         )
         # scan.py now orchestrates collection + analysis in one call.
-        return measurement.measure(scan_type="on_the_fly")
+        return measurement.measure(scan_mode="otf")
 
     def _registry_path(self) -> Path:
         """Get the path to the run registry JSON file."""
@@ -483,7 +483,7 @@ class WireScanSuite:
             beam_profile_device=device, beampath=self.beampath
         )
         # scan.py now orchestrates collection + analysis in one call.
-        return measurement.measure(scan_type="step")
+        return measurement.measure(scan_mode="step")
 
     def _stamp(self) -> str:
         """Generate a timestamp string for file naming."""
