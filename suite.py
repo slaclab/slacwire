@@ -353,6 +353,8 @@ class WireScanSuite:
             )
 
             for profile in self.profiles:
+                if profile not in data.profiles:
+                    continue
                 fig_prof = self.view.plot_profile(
                     data,
                     profile,
