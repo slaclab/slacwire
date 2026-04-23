@@ -3,17 +3,16 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import yaml
 from pydm import Display
 from PyQt5.QtCore import QThread, pyqtSignal
 from qtpy.QtWidgets import QFileDialog, QVBoxLayout, QWidget
 
-from widgets.measurement import MeasurementWidget, extract_measurement_data
-from widgets.navigation import NavigationWidget
-from widgets.plots import PlotWidget
-from widgets.text_logger import attach_logger_to_widget
-from suite import WireScanSuite
+from .widgets.measurement import MeasurementWidget, extract_measurement_data
+from .widgets.navigation import NavigationWidget
+from .widgets.plots import PlotWidget
+from .widgets.text_logger import attach_logger_to_widget
+from .suite import WireScanSuite
 
 
 class WireScanSuiteThread(QThread):
@@ -26,14 +25,12 @@ class WireScanSuiteThread(QThread):
         wire_identifier: str,
         beampath: str,
         detector: str,
-        save_data: bool = True,
     ):
         super().__init__()
         self.suite = suite
         self.wire_identifier = wire_identifier
         self.beampath = beampath
         self.detector = detector
-        self.save_data = save_data
 
     def run(self):
         try:
@@ -52,9 +49,6 @@ class WireScanSuiteThread(QThread):
             self.suite.run_single(
                 wire=wire_name,
                 scan_mode="otf",            # Force OTF mode for testing! 4/14/26
-                save=self.save_data,
-                show=False,  # Don't show plots in thread
-                save_plots=False,  # Plots handled by GUI
             )
             
             # Retrieve the latest run data and entry from registry
@@ -70,7 +64,7 @@ class WireScanSuiteThread(QThread):
             
             # Find the corresponding entry in run_registry (most recent for this wire)
             entry = None
-            for reg_entry in reversed(self.suite.run_registry):
+            for reg_entry in reversed(self.suite.registry.entries):
                 if reg_entry.get("wire") == wire_name:
                     entry = reg_entry
                     break
@@ -252,13 +246,15 @@ class WireScanSuiteGUI(Display):
         self.suite.beampath = self.nav.beampath
         if self.measurement.detector:
             self.suite.detector = self.measurement.detector
+        self.suite.save = True
+        self.suite.show = False       # GUI renders plots after thread completes
+        self.suite.save_plots = False  # GUI renders plots after thread completes
 
         self.thread = WireScanSuiteThread(
             suite=self.suite,
             wire_identifier=wire_identifier,
             beampath=self.nav.beampath,
             detector=self.measurement.detector or self.suite.detector,
-            save_data=True,
         )
         self.thread.scan_complete.connect(self.on_scan_complete)
         self.thread.scan_failed.connect(self.on_scan_failure)
@@ -282,9 +278,10 @@ class WireScanSuiteGUI(Display):
     def on_scan_failure(self, wire_identifier: str, message: str):
         self.ui.startButton.setEnabled(True)
         wire_name = wire_identifier.split(":")[0]
-        self.suite._log_run(
+        self.suite.registry.log(
             method="unknown",
             wire=wire_name,
+            beampath=self.suite.beampath,
             status="error",
             error=message,
         )
@@ -421,41 +418,7 @@ class WireScanSuiteGUI(Display):
         data = self._latest_result_for_wire(wire)
         if data is None:
             return
-
-        traj_wire = np.asarray(data.collection_result.raw_data[wire])
-        scan_points = np.arange(len(traj_wire))
-        traj_detector = np.asarray(data.collection_result.raw_data[detector])
-        detector_label = (
-            "% Beam Loss" if detector == "TMITLOSS" else f"{detector} Counts"
-        )
-
-        trajectory_plot.figure.clf()
-        ax1 = trajectory_plot.figure.add_subplot(1, 1, 1)
-        ax2 = ax1.twinx()
-        trajectory_plot.axes = ax1
-        trajectory_plot.secondary_axes = ax2
-
-        ax1.plot(
-            scan_points,
-            traj_wire,
-            label="Wire Position (µm)",
-            color="#1f77b4",
-        )
-        ax1.set_xlabel("Scan Point")
-        ax1.set_ylabel("Wire Position (µm)", color="#1f77b4")
-        ax1.tick_params(axis="y", labelcolor="#1f77b4")
-
-        ax2.plot(
-            scan_points,
-            traj_detector,
-            label=detector_label,
-            color="#d95f02",
-        )
-        ax2.set_ylabel(detector_label, color="#d95f02")
-        ax2.tick_params(axis="y", labelcolor="#d95f02")
-
-        ax1.set_title(f"{wire} Motion Trajectory")
-        trajectory_plot.figure.tight_layout()
+        self.suite.view.draw_trajectory(trajectory_plot.figure, data, wire, detector)
         trajectory_plot.draw()
 
     def update_profile_plot(self):
@@ -469,75 +432,7 @@ class WireScanSuiteGUI(Display):
         profile = self.plots.profile_control.profile.lower()
         if not profile:
             return
-
-        p = data.profiles[profile]
-        x_stage = np.asarray(p.positions)
-        y_meas = np.asarray(p.detectors[detector].values)
-
-        fit_result = data.fit_result[profile].detectors[detector]
-
-        profile_plot.figure.clf()
-        profile_plot.axes = profile_plot.figure.add_subplot(1, 1, 1)
-        profile_plot.axes.plot(
-            x_stage,
-            y_meas,
-            label="Measured",
-            linestyle="dotted",
-            color="blue",
-        )
-        profile_plot.axes.set_xlabel("Wire Position (stage, µm)")
-        detector_label = (
-            "% Beam Loss" if detector == "TMITLOSS" else f"{detector} Counts"
-        )
-        profile_plot.axes.set_ylabel(detector_label)
-
-        scale = 1 if profile == "u" else np.cos(np.deg2rad(45))
-
-        def stage_to_beam(x):
-            return x * scale
-
-        def beam_to_stage(x):
-            return x / scale
-
-        x_beam_fit = np.asarray(fit_result.positions)
-        y_fit = np.asarray(fit_result.curve)
-        profile_plot.axes.plot(
-            beam_to_stage(x_beam_fit),
-            y_fit,
-            label="Fitted",
-            linestyle="-",
-        )
-
-        secax = profile_plot.axes.secondary_xaxis(
-            "top",
-            functions=(stage_to_beam, beam_to_stage),
-        )
-        secax.set_xlabel("Wire Position (beam, µm)")
-
-        profile_plot.axes.set_title(
-            f"{wire} {profile.upper()} Profile for {detector}"
-        )
-        profile_plot.axes.legend(loc="upper right")
-        profile_plot.axes.grid(True, which="both", linestyle="--", alpha=0.6)
-
-        amp_off_units = "%" if detector == "TMITLOSS" else "Counts"
-        params_text = (
-            f"Mean: {fit_result.mean:.1f} µm\n"
-            f"Sigma: {fit_result.sigma:.1f} µm\n"
-            f"Amplitude: {fit_result.amplitude:.1f} {amp_off_units}\n"
-            f"Offset: {fit_result.offset:.1f} {amp_off_units}"
-        )
-        profile_plot.axes.text(
-            0.95,
-            0.15,
-            params_text,
-            transform=profile_plot.axes.transAxes,
-            verticalalignment="bottom",
-            horizontalalignment="right",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-        )
-
-        profile_plot.figure.tight_layout()
+        self.suite.view.draw_profile(profile_plot.figure, data, wire, detector, profile)
         profile_plot.draw()
 
     def update_plots(self):

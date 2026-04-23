@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools >= 75.0", "setuptools_scm[toml]>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+authors = [
+    { name = "The Board of Trustees of the Leland Stanford Junior University, through SLAC National Accelerator Laboratory" },
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "pydm",
+    "PyQt5",
+    "qtpy",
+    "pyyaml",
+    "slac-measurements @ git+https://github.com/slaclab/slac-measurements.git@main",
+]
+description = "Wire scanner beam profile measurement GUI for LCLS"
+dynamic = ["version"]
+name = "slacwire"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.10"
+
+[options]
+include_package_data = true
+
+[tool.setuptools.packages.find]
+include = ["slacwire*"]
+
+[tool.setuptools.package-data]
+slacwire = ["*.ui", "*.yaml"]
+
+[tool.setuptools_scm]
