@@ -28,6 +28,5 @@ jobs:
           python -m pip install matplotlib
 
       - name: Run unit tests
-        working-directory: slacwire
         run: |
           python -m unittest discover -s tests -p 'test_*.py'
