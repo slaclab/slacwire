@@ -7,7 +7,6 @@ from typing import Optional
 from slac_devices.reader import create_wire
 from slac_measurements.wires.scan import WireBeamProfileMeasurement
 from .registry import RunRegistry
-from .view import WireScanView
 
 logger = logging.getLogger("wire_scan_logger")
 
@@ -101,7 +100,7 @@ class WireScanSuite:
     save_plots: bool = True
     results: dict = field(default_factory=dict)
     registry: RunRegistry = field(default_factory=RunRegistry)
-    view: WireScanView = field(init=False)
+    view: object = field(init=False)
 
     def __post_init__(self):
         """Initialize the wire scan suite after dataclass construction.
@@ -109,9 +108,15 @@ class WireScanSuite:
         Creates device instances and ensures output directories exist.
         """
         self._build_devices()
-        self.view = WireScanView()
+        self.view = self._build_view()
         self.outdir.mkdir(parents=True, exist_ok=True)
         self.plotdir.mkdir(parents=True, exist_ok=True)
+
+    def _build_view(self):
+        """Create the plotting view instance used by the suite."""
+        from .view import WireScanView
+
+        return WireScanView()
 
     def __repr__(self) -> str:
         """Return a concise representation of suite state for debugging."""

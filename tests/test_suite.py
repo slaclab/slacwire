@@ -28,22 +28,11 @@ class _DummyMeasurement:
 fake_slac_measurements_scan.WireBeamProfileMeasurement = _DummyMeasurement
 fake_slac_measurements.wires = fake_slac_measurements_wires
 
-fake_slacwire_view = types.ModuleType("slacwire.view")
-
-
-class _DummyView:
-    def render(self, *args, **kwargs):
-        return []
-
-
-fake_slacwire_view.WireScanView = _DummyView
-
 sys.modules.setdefault("slac_devices", fake_slac_devices)
 sys.modules.setdefault("slac_devices.reader", fake_slac_devices_reader)
 sys.modules.setdefault("slac_measurements", fake_slac_measurements)
 sys.modules.setdefault("slac_measurements.wires", fake_slac_measurements_wires)
 sys.modules.setdefault("slac_measurements.wires.scan", fake_slac_measurements_scan)
-sys.modules.setdefault("slacwire.view", fake_slacwire_view)
 
 from slacwire.suite import WireScanSuite
 
@@ -67,7 +56,10 @@ class _FakeDevice:
 class TestWireScanSuite(unittest.TestCase):
     def test_run_device_scan_uses_suite_flags_and_logs(self):
         with tempfile.TemporaryDirectory() as tmp:
-            suite = WireScanSuite(wires=[], outdir=Path(tmp), plotdir=Path(tmp) / "plots")
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
+                suite = WireScanSuite(
+                    wires=[], outdir=Path(tmp), plotdir=Path(tmp) / "plots"
+                )
             suite.save = False
             suite.show = False
             suite.save_plots = False
@@ -99,7 +91,10 @@ class TestWireScanSuite(unittest.TestCase):
 
     def test_run_device_scan_logs_error_and_reraises(self):
         with tempfile.TemporaryDirectory() as tmp:
-            suite = WireScanSuite(wires=[], outdir=Path(tmp), plotdir=Path(tmp) / "plots")
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
+                suite = WireScanSuite(
+                    wires=[], outdir=Path(tmp), plotdir=Path(tmp) / "plots"
+                )
             suite.registry = MagicMock()
             suite.view = MagicMock()
             device = _FakeDevice()
@@ -127,11 +122,12 @@ class TestWireScanSuite(unittest.TestCase):
         self, mock_run_otf, mock_run_step, mock_make_device
     ):
         with tempfile.TemporaryDirectory() as tmp:
-            suite = WireScanSuite(
-                wires=[],
-                outdir=Path(tmp),
-                plotdir=Path(tmp) / "plots",
-            )
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
+                suite = WireScanSuite(
+                    wires=[],
+                    outdir=Path(tmp),
+                    plotdir=Path(tmp) / "plots",
+                )
 
             mock_make_device.return_value = _FakeDevice(beam_rate=100)
             suite.run_single("WS28144", scan_mode="auto")
