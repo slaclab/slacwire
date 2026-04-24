@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 import sys
@@ -34,7 +35,7 @@ sys.modules.setdefault("slac_measurements", fake_slac_measurements)
 sys.modules.setdefault("slac_measurements.wires", fake_slac_measurements_wires)
 sys.modules.setdefault("slac_measurements.wires.scan", fake_slac_measurements_scan)
 
-from slacwire.suite import WireScanSuite
+from slacwire.suite import WireScanSuite, dated_output_dir
 
 
 class _FakeData:
@@ -54,6 +55,36 @@ class _FakeDevice:
 
 
 class TestWireScanSuite(unittest.TestCase):
+    def test_dated_output_dir_creates_ymd_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dt = datetime(2026, 4, 17, 10, 30, 0)
+            path = dated_output_dir(dt=dt, base_dir=Path(tmp))
+            expected = Path(tmp) / "2026" / "04" / "17"
+            self.assertEqual(path, expected)
+            self.assertTrue(path.exists())
+            self.assertTrue((path / "plots").exists())
+
+    def test_suite_default_plotdir_is_under_outdir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            outdir = Path(tmp) / "2026" / "04" / "17"
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
+                suite = WireScanSuite(wires=[], outdir=outdir)
+            self.assertEqual(suite.plotdir, outdir / "plots")
+            self.assertTrue(suite.plotdir.exists())
+
+    def test_suite_plotdir_is_always_under_outdir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            outdir = Path(tmp) / "2026" / "04" / "17"
+            custom_plotdir = Path(tmp) / "somewhere_else" / "plots"
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
+                suite = WireScanSuite(
+                    wires=[],
+                    outdir=outdir,
+                    plotdir=custom_plotdir,
+                )
+            self.assertEqual(suite.plotdir, outdir / "plots")
+            self.assertTrue(suite.plotdir.exists())
+
     def test_run_device_scan_uses_suite_flags_and_logs(self):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
