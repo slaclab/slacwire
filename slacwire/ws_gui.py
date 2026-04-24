@@ -116,43 +116,11 @@ class WireScanSuiteGUI(Display):
         with open(yaml_path, "r", encoding="utf-8") as stream:
             return yaml.safe_load(stream)
 
-    def _dated_dir(self, dt: datetime | None = None) -> Path:
-        """Create and return dated directory for wire scan data.
-
-        Args:
-            dt: Optional datetime to use for directory structure.
-                Defaults to current time.
-
-        Returns:
-            Path to /u1/lcls/physics/data/wire_scan/YYYY/MM/DD/
-        """
-        base_dir = Path("/u1/lcls/physics/data/wire_scan")
-        dt = dt or datetime.now()
-        path = base_dir / f"{dt:%Y}" / f"{dt:%m}" / f"{dt:%d}"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def _safe_output_dir(self) -> Path:
-        try:
-            return self._dated_dir()
-        except Exception:
-            fallback = (
-                self.base_path
-                / "wire_scan_output"
-                / datetime.now().strftime("%Y/%m/%d")
-            )
-            fallback.mkdir(parents=True, exist_ok=True)
-            return fallback
-
     def _build_suite(self) -> WireScanSuite:
-        outdir = self._safe_output_dir()
-        plotdir = outdir / "plots"
         return WireScanSuite(
             wires=[],
             beampath=self.nav.beampath,
             detector=self.measurement.detector or "PMT29150",
-            outdir=outdir,
-            plotdir=plotdir,
         )
 
     def _create_wire(self, area, name):
@@ -177,10 +145,7 @@ class WireScanSuiteGUI(Display):
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
 
         self.ui.statusUpdate.setReadOnly(True)
-        log_dest = (
-            self._safe_output_dir()
-            / f"WireScanLog-{datetime.now():%Y-%m-%d}.txt"
-        )
+        log_dest = self.suite.outdir / f"WireScanLog-{datetime.now():%Y-%m-%d}.txt"
         self.logger = self._build_logger(log_dest)
         self.logger.setLevel(logging.INFO)
         attach_logger_to_widget(self.logger, self.ui.statusUpdate)
@@ -393,7 +358,7 @@ class WireScanSuiteGUI(Display):
             return
 
         title = f"{wire} Scan v. {detector} - {profile} Profile"
-        image_path = self._safe_output_dir() / "profile_plot.png"
+        image_path = self.suite.plotdir / "profile_plot.png"
         self.plots.profile_plot.figure.savefig(image_path, dpi=150)
 
         try:

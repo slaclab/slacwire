@@ -44,6 +44,20 @@ WIRE_AREA_LOOKUP = {
     "WS33B": "LTUS",
     "WS34B": "LTUS",
 }
+_BASE_DIR = "/u1/lcls/physics/data/wire_scan"
+
+
+def dated_output_dir(dt: datetime | None = None,
+    base_dir: Path | str = _BASE_DIR,
+) -> Path:
+    """Create and return dated directory for wire scan data."""
+
+    dt = dt or datetime.now()
+    root = Path(base_dir)
+    path = root / f"{dt:%Y}" / f"{dt:%m}" / f"{dt:%d}"
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "plots").mkdir(parents=True, exist_ok=True)
+    return path
 
 
 @dataclass
@@ -92,8 +106,8 @@ class WireScanSuite:
     devices: dict = field(default_factory=dict)
     beampath: str = "CU_HXR"
     detector: Optional[str] = None
-    outdir: Path = Path("/home/physics/kabanaty/sandbox/ws_suite")
-    plotdir: Path = Path("/home/physics/kabanaty/sandbox/ws_suite/plots/")
+    outdir: Path = field(default_factory=dated_output_dir)
+    plotdir: Path | None = None
     profiles: tuple[str, ...] = ("x", "y", "u")
     save: bool = True
     show: bool = True
@@ -109,6 +123,9 @@ class WireScanSuite:
         """
         self._build_devices()
         self.view = self._build_view()
+        self.outdir = Path(self.outdir)
+        # Keep plot output co-located with each dated data directory.
+        self.plotdir = self.outdir / "plots"
         self.outdir.mkdir(parents=True, exist_ok=True)
         self.plotdir.mkdir(parents=True, exist_ok=True)
 
