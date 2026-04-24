@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from slacwire.kpi_queries import RunRegistryKPIReporter
-from slacwire.registry_sqlite import convert_run_registry_json_to_sqlite
+from slacwire.registry.kpi_queries import RunRegistryKPIReporter
+from slacwire.registry.registry_sqlite import convert_run_registry_json_to_sqlite
 
 
 class TestRunRegistryKPIReporter(unittest.TestCase):

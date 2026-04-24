@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from slacwire.registry_sqlite import convert_run_registry_json_to_sqlite
+from slacwire.registry.registry_sqlite import convert_run_registry_json_to_sqlite
 
 
 class TestRegistrySQLiteConversion(unittest.TestCase):

@@ -18,7 +18,11 @@ slacwire/
 		__init__.py
 		suite.py          # Controller/orchestration
 		view.py           # View/plot rendering
-		registry.py       # Registry persistence
+		registry/
+			registry.py     # Registry persistence
+			registry_sqlite.py
+			kpi_queries.py
+			kpi_cli.py
 		ws_gui.py         # GUI composition and wiring
 		wire_scan_gui.ui
 		wire_scan_gui.yaml
@@ -88,7 +92,7 @@ This keeps scan execution logic independent from plotting implementation and fil
 
 - Keep controller logic in `suite.py` and avoid embedding matplotlib logic there.
 - Put rendering and figure composition changes in `view.py`.
-- Keep JSON registry and run logging concerns in `registry.py`.
+- Keep JSON registry and run logging concerns in `registry/registry.py`.
 - Prefer relative imports within the `slacwire` package.
 
 ## Reporting: JSON to SQLite Snapshot Conversion

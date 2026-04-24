@@ -4,8 +4,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from slacwire.kpi_cli import main, run_kpi_bundle
-from slacwire.registry_sqlite import convert_run_registry_json_to_sqlite
+from slacwire.registry.kpi_cli import main, run_kpi_bundle
+from slacwire.registry.registry_sqlite import convert_run_registry_json_to_sqlite
 
 
 class TestKPICLI(unittest.TestCase):
@@ -149,7 +149,7 @@ class TestKPICLI(unittest.TestCase):
             output_dir = tmp_path / "reports"
 
             with patch(
-                "slacwire.kpi_cli.DEFAULT_PRODUCTION_JSON_PATH",
+                "slacwire.registry.kpi_cli.DEFAULT_PRODUCTION_JSON_PATH",
                 source_json,
             ):
                 exit_code = main(
