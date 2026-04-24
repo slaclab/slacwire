@@ -137,5 +137,50 @@ failure_by_wire = reporter.failures_by_wire(
 print(failure_by_wire)
 ```
 
+CLI companion for production/ops use:
+
+```bash
+slacwire-kpi-report \
+	--sqlite-path /path/to/ws_registry_2026-04-24.sqlite3 \
+	--start-ts 2026-04-01T00:00:00 \
+	--end-ts 2026-05-01T00:00:00 \
+	--cutoff-date 2026-05-01 \
+	--output-dir /path/to/reports/2026-04
+```
+
+Production default JSON path shortcut (uses
+`/u1/lcls/physics/data/wire_scan/ws_run_registry.json`):
+
+```bash
+slacwire-kpi-report \
+	--start-ts 2026-04-01T00:00:00 \
+	--end-ts 2026-05-01T00:00:00 \
+	--cutoff-date 2026-05-01 \
+	--output-dir /path/to/reports/2026-04
+```
+
+JSON-only workflow (no existing SQLite needed):
+
+```bash
+slacwire-kpi-report \
+	--json-path /path/to/ws_run_registry.json \
+	--start-ts 2026-04-01T00:00:00 \
+	--end-ts 2026-05-01T00:00:00 \
+	--cutoff-date 2026-05-01 \
+	--output-dir /path/to/reports/2026-04
+```
+
+Optional: persist the converted SQLite file while running from JSON input:
+
+```bash
+slacwire-kpi-report \
+	--json-path /path/to/ws_run_registry.json \
+	--sqlite-output-path /path/to/ws_registry_2026-04.sqlite3 \
+	--output-dir /path/to/reports/2026-04
+```
+
+If `--start-ts` and `--end-ts` are omitted, the CLI defaults to the previous
+full calendar month.
+
 By default, conversion will not overwrite an existing SQLite file. Pass
 `overwrite=True` only when you explicitly want replacement.

@@ -29,6 +29,9 @@ name = "slacwire"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 
+[project.scripts]
+slacwire-kpi-report = "slacwire.kpi_cli:main"
+
 [options]
 include_package_data = true
 
