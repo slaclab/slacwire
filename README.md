@@ -7,6 +7,7 @@ Wire scanner GUI and orchestration package for LCLS beam profile measurements.
 - A controller layer (`WireScanSuite`) that orchestrates scans
 - A view layer (`WireScanView`) for plotting and rendering
 - A persistence layer (`RunRegistry`) for run metadata and audit history
+- A reporting utility to convert Run Registry JSON snapshots into SQLite
 
 ## Package Layout
 
@@ -89,3 +90,52 @@ This keeps scan execution logic independent from plotting implementation and fil
 - Put rendering and figure composition changes in `view.py`.
 - Keep JSON registry and run logging concerns in `registry.py`.
 - Prefer relative imports within the `slacwire` package.
+
+## Reporting: JSON to SQLite Snapshot Conversion
+
+For weekly/monthly reporting, keep scan-time JSON writes unchanged and convert a
+snapshot of the registry to SQLite when needed:
+
+```python
+from slacwire import convert_run_registry_json_to_sqlite
+
+summary = convert_run_registry_json_to_sqlite(
+	source_json="/path/to/ws_registry_2026-04-24.json",
+	sqlite_path="/path/to/ws_registry_2026-04-24.sqlite3",
+)
+
+print(summary)
+```
+
+The converter creates:
+- `runs` table with KPI-focused metadata, including `timestamp_raw`,
+  `timestamp_iso`, `source_json`, and `ingested_at`
+- `run_plots` table with one row per plot path
+
+Companion management-report query pack:
+- `docs/run_registry_kpi_queries.sql`
+
+Python companion (SQLAlchemy):
+
+```python
+from slacwire import RunRegistryKPIReporter
+
+reporter = RunRegistryKPIReporter.from_sqlite_path(
+	"/path/to/ws_registry_2026-04-24.sqlite3"
+)
+
+snapshot = reporter.executive_kpi_snapshot(
+	start_ts="2026-04-01T00:00:00",
+	end_ts="2026-05-01T00:00:00",
+)
+print(snapshot)
+
+failure_by_wire = reporter.failures_by_wire(
+	start_ts="2026-04-01T00:00:00",
+	end_ts="2026-05-01T00:00:00",
+)
+print(failure_by_wire)
+```
+
+By default, conversion will not overwrite an existing SQLite file. Pass
+`overwrite=True` only when you explicitly want replacement.

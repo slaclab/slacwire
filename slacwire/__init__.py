@@ -7,7 +7,14 @@ GUI/controller stack.
 
 from importlib import import_module
 
-__all__ = ["WireScanSuite", "WireScanView", "RunRegistry"]
+__all__ = [
+	"WireScanSuite",
+	"WireScanView",
+	"RunRegistry",
+	"RegistrySQLiteSummary",
+	"convert_run_registry_json_to_sqlite",
+	"RunRegistryKPIReporter",
+]
 
 
 def __getattr__(name):
@@ -17,4 +24,10 @@ def __getattr__(name):
 		return import_module("slacwire.view").WireScanView
 	if name == "RunRegistry":
 		return import_module("slacwire.registry").RunRegistry
+	if name == "RegistrySQLiteSummary":
+		return import_module("slacwire.registry_sqlite").RegistrySQLiteSummary
+	if name == "convert_run_registry_json_to_sqlite":
+		return import_module("slacwire.registry_sqlite").convert_run_registry_json_to_sqlite
+	if name == "RunRegistryKPIReporter":
+		return import_module("slacwire.kpi_queries").RunRegistryKPIReporter
 	raise AttributeError(f"module 'slacwire' has no attribute {name!r}")
