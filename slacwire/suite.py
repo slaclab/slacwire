@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from slac_devices.reader import create_wire
 from slac_measurements.wires.scan import WireBeamProfileMeasurement
@@ -107,7 +107,7 @@ class WireScanSuite:
     wires: list = field(default_factory=lambda: ["WS28144"])
     devices: dict = field(default_factory=dict)
     beampath: Beampath = "CU_HXR"
-    detector: Optional[str] = None
+    detector: str | None = None
     outdir: Path = field(default_factory=dated_output_dir)
     plotdir: Path | None = None
     save: bool = True
