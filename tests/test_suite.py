@@ -179,7 +179,7 @@ class TestWireScanSuite(unittest.TestCase):
     @patch.object(WireScanSuite, "_make_device")
     @patch.object(WireScanSuite, "_run_step_device")
     @patch.object(WireScanSuite, "_run_otf_device")
-    def test_run_single_auto_selects_mode_by_beam_rate(
+    def test_run_single_defaults_to_otf_and_allows_step(
         self, mock_run_otf, mock_run_step, mock_make_device
     ):
         with tempfile.TemporaryDirectory() as tmp:
@@ -190,15 +190,14 @@ class TestWireScanSuite(unittest.TestCase):
                     plotdir=Path(tmp) / "plots",
                 )
 
-            mock_make_device.return_value = _FakeDevice(beam_rate=100)
-            suite.run_single("WS28144", scan_mode="auto")
-            mock_run_step.assert_called_once()
-
-            mock_run_step.reset_mock()
             mock_make_device.return_value = _FakeDevice(beam_rate=1000)
-            suite.devices.clear()
-            suite.run_single("WS28144", scan_mode="auto")
+            suite.run_single("WS28144")
             mock_run_otf.assert_called_once()
+
+            mock_run_otf.reset_mock()
+            suite.devices.clear()
+            suite.run_single("WS28144", scan_mode="step")
+            mock_run_step.assert_called_once()
 
 
 if __name__ == "__main__":

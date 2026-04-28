@@ -65,7 +65,7 @@ suite.save = True
 suite.show = False
 suite.save_plots = False
 
-suite.run_single(wire="WS28144", scan_mode="auto")
+suite.run_single(wire="WS28144")
 result = suite.latest_run("WS28144")
 ```
 

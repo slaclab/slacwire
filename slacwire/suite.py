@@ -372,6 +372,8 @@ class WireScanSuite:
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = _get_device_for_wire(wire_name)
 
+        mode = scan_mode.lower()
+
         if mode == "otf":
             self._run_otf_device(device, rms_detector=rms_detector)
             return
@@ -380,7 +382,7 @@ class WireScanSuite:
             return
 
         raise ValueError(
-            f"Invalid scan_mode '{scan_mode}'. Use 'otf', or 'step'."
+            f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
         )
 
     def _run_step_device(self, device, rms_detector: str | None = None):
