@@ -227,7 +227,7 @@ class WireScanSuite:
 
     def run_all(
         self,
-        scan_mode: str = "auto",
+        scan_mode: str = "otf",
         rms_detector: str | None = None,
     ):
         """Run all configured wires in the requested scan mode."""
@@ -358,21 +358,10 @@ class WireScanSuite:
     def run_single(
         self,
         wire: str,
-        scan_mode: str = "auto",
+        scan_mode: str = "otf",
         rms_detector: str | None = None,
     ):
         """Run a single wire in the requested scan mode."""
-        def _auto_scan_mode(device):
-            """Determine scan mode from beam rate."""
-            if device.beam_rate <= 120:
-                return "step"
-            if device.beam_rate <= 16600:
-                return "otf"
-            logger.error(
-                f"Beam rate {device.beam_rate} is out of expected range "
-                f"for both OTF and step scans. Skipping {device.name}."
-            )
-            return None
 
         def _get_device_for_wire(wire: str):
             """Get or lazily create a device for a wire name."""
@@ -383,13 +372,6 @@ class WireScanSuite:
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = _get_device_for_wire(wire_name)
 
-        mode = scan_mode.lower()
-        if mode == "auto":
-            selected = _auto_scan_mode(device)
-            if selected is None:
-                return
-            mode = selected
-
         if mode == "otf":
             self._run_otf_device(device, rms_detector=rms_detector)
             return
@@ -398,7 +380,7 @@ class WireScanSuite:
             return
 
         raise ValueError(
-            f"Invalid scan_mode '{scan_mode}'. Use 'auto', 'otf', or 'step'."
+            f"Invalid scan_mode '{scan_mode}'. Use 'otf', or 'step'."
         )
 
     def _run_step_device(self, device, rms_detector: str | None = None):
