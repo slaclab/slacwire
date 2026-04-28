@@ -248,6 +248,7 @@ class WireScanSuite:
     ):
         """Execute common scan flow for a single device and method."""
         scan_started = datetime.now()
+        run_stamp = scan_started.strftime("%Y%m%d_%H%M%S")
         # Resolve one detector choice for the entire scan.
         default_detector = device.metadata.default_detector
         selected_detector = (
@@ -262,7 +263,7 @@ class WireScanSuite:
 
             path = None
             if self.save:
-                path = self.outdir / f"{file_prefix}_{device.name}_{self._stamp()}.h5"
+                path = self.outdir / f"{file_prefix}_{device.name}_{run_stamp}.h5"
                 data.save_to_h5(path)
 
             plot_paths = self.view.render(
@@ -272,7 +273,7 @@ class WireScanSuite:
                 profiles=tuple(device.active_profiles()),
                 file_prefix=file_prefix,
                 plotdir=self.plotdir,
-                stamp=self._stamp(),
+                stamp=run_stamp,
                 show=self.show,
                 save=self.save_plots,
             )
