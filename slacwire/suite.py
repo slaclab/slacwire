@@ -165,6 +165,88 @@ class WireScanSuite:
             raise KeyError(msg)
         return runs[-1]
 
+    def replot(self, wire: str) -> list:
+        """Regenerate plots for the latest run of a wire without re-scanning.
+
+        Uses the suite's current ``profiles``, ``show``, and ``save_plots`` flags.
+        """
+        data = self.latest_run(wire)
+        meta = data.collection_result.metadata
+        detector = meta.rms_detector or meta.default_detector
+        if ":" in detector:
+            detector = detector.split(":", 1)[0]
+
+        # Infer scan method from registry for the file prefix.
+        method = "otf"
+        for entry in reversed(self.registry.entries):
+            if entry.get("wire") == wire:
+                method = entry.get("method", "otf")
+                break
+        file_prefix = "OTF" if method == "otf" else "Step"
+
+        return self.view.render(
+            data,
+            wire=wire,
+            detector=detector,
+            profiles=self.profiles,
+            file_prefix=file_prefix,
+            plotdir=self.plotdir,
+            stamp=self._stamp(),
+            show=self.show,
+            save=self.save_plots,
+        )
+
+    def summary(self) -> None:
+        """Print the latest scan result for each wire (timestamp, method, detector, σ per profile)."""
+        _SEP = "─" * 77
+        print(f"\nWire Scan Suite  ·  beampath: {self.beampath}")
+        print(_SEP)
+
+        wires_with_results = [w for w in self.wires if self.results.get(w)]
+        total_runs = sum(len(v) for v in self.results.values())
+
+        if not wires_with_results:
+            print("  No results yet.")
+            print(_SEP)
+            return
+
+        for wire in wires_with_results:
+            runs = self.results[wire]
+            data = self.latest_run(wire)
+            run_count = len(runs)
+
+            # Resolve scan method from the most recent registry entry for this wire.
+            method = "—"
+            for entry in reversed(self.registry.entries):
+                if entry.get("wire") == wire:
+                    method = entry.get("method", "—")
+                    break
+
+            meta = data.collection_result.metadata
+            ts = meta.timestamp
+            timestamp = ts.strftime("%Y%m%d_%H%M%S") if ts is not None else "—"
+            detector = meta.rms_detector or meta.default_detector
+
+            label = f"{run_count} run" + ("s" if run_count != 1 else "")
+            print(f"\n{wire}  ({label})")
+            print(f"  Latest  |  {timestamp}  |  {method}  |  detector: {detector}")
+
+            for profile in self.profiles:
+                if profile not in data.fit_result:
+                    print(f"    {profile} :  no fit")
+                    continue
+                det_fits = data.fit_result[profile].detectors
+                if detector not in det_fits:
+                    print(f"    {profile} :  no fit")
+                    continue
+                sigma = det_fits[detector].sigma
+                print(f"    {profile} :  σ = {sigma:>7.1f} µm")
+
+        wire_label = "wire" + ("s" if len(wires_with_results) != 1 else "")
+        run_label = "run" + ("s" if total_runs != 1 else "")
+        print(f"\n{_SEP}")
+        print(f"Total: {len(wires_with_results)} {wire_label}, {total_runs} {run_label}\n")
+
     def _make_device(self, wire: str):
         """Create a wire device instance."""
         wire_name, area = self._resolve_wire_and_area(wire)
@@ -205,6 +287,8 @@ class WireScanSuite:
                 scan_mode=scan_mode,
                 rms_detector=rms_detector,
             )
+
+        self.summary()
 
     def _run_device_scan(
         self,
