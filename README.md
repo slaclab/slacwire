@@ -77,7 +77,7 @@ At runtime, the GUI:
 - Loads YAML configuration from `wire_scan_gui.yaml`
 - Uses `WireScanSuite` to execute scans in a worker thread
 - Uses `WireScanView` for plotting behavior
-- Writes outputs to dated directories under `/u1/lcls/physics/data/wire_scan` (with local fallback)
+- Writes outputs to dated directories under `/u1/lcls/physics/data/wire_scan`
 
 ## MVC Separation in Current Design
 
