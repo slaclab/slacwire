@@ -43,8 +43,7 @@ class WireScanSuiteThread(QThread):
             
             # Use suite's orchestrated run_single() method which handles:
             # - Device creation/caching
-            # - Auto scan mode detection
-            # - Execution of step or OTF scan
+            # - Execution of OTF or step scan
             # - Data saving and logging
             self.suite.run_single(
                 wire=wire_name,
