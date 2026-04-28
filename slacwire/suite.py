@@ -176,7 +176,7 @@ class WireScanSuite:
             beam_profile_device=device, beampath=self.beampath
         )
         # scan.py now orchestrates collection + analysis in one call.
-        return measurement.measure(scan_mode="otf")
+        return measurement.measure(scan_mode="otf", rms_detector=rms_detector)
 
     def replot(self, wire: str) -> list:
         """Regenerate plots for the latest run of a wire without re-scanning.
@@ -236,8 +236,6 @@ class WireScanSuite:
                 scan_mode=scan_mode,
                 rms_detector=rms_detector,
             )
-
-        self.summary()
 
     def _run_device_scan(
         self,
@@ -368,7 +366,7 @@ class WireScanSuite:
             beam_profile_device=device, beampath=self.beampath
         )
         # scan.py now orchestrates collection + analysis in one call.
-        return measurement.measure(scan_mode="step")
+        return measurement.measure(scan_mode="step", rms_detector=rms_detector)
 
     def summary(self) -> None:
         """Print the latest scan result for each wire (timestamp, method, detector, σ per profile)."""
