@@ -47,6 +47,7 @@ WIRE_AREA_LOOKUP = {
     "WS34B": "LTUS",
 }
 _BASE_DIR = "/u1/lcls/physics/data/wire_scan"
+_SCOPE_DATA_DIR = Path("/u1/lcls/physics/genMotion/wirescanners/scope_data")
 
 
 def dated_output_dir(dt: datetime | None = None,
@@ -246,6 +247,7 @@ class WireScanSuite:
         file_prefix: str,
     ):
         """Execute common scan flow for a single device and method."""
+        scan_started = datetime.now()
         # Resolve one detector choice for the entire scan.
         default_detector = device.metadata.default_detector
         selected_detector = (
@@ -274,6 +276,11 @@ class WireScanSuite:
                 show=self.show,
                 save=self.save_plots,
             )
+            scope_data = self._resolve_scope_data_path(
+                wire=device.name,
+                method=method,
+                since=scan_started,
+            )
 
             self.registry.log(
                 method=method,
@@ -281,18 +288,61 @@ class WireScanSuite:
                 beampath=self.beampath,
                 detector=selected_detector,
                 filepath=path,
+                scope_data=scope_data,
                 plots=plot_paths,
             )
         except Exception as e:
+            scope_data = self._resolve_scope_data_path(
+                wire=device.name,
+                method=method,
+                since=scan_started,
+            )
             self.registry.log(
                 method=method,
                 wire=device.name,
                 beampath=self.beampath,
                 detector=selected_detector,
+                scope_data=scope_data,
                 status="error",
                 error=str(e),
             )
             raise
+
+    def _resolve_scope_data_path(
+        self,
+        wire: str,
+        method: str,
+        since: datetime | None = None,
+    ) -> Path | None:
+        """Return latest scope CSV path for an OTF run, if available."""
+        if method != "otf":
+            return None
+
+        wire_dir = _SCOPE_DATA_DIR / wire
+        if not wire_dir.exists() or not wire_dir.is_dir():
+            return None
+
+        csv_files = sorted(
+            [
+                path
+                for path in wire_dir.glob(f"{wire}_*.csv")
+                if path.is_file()
+            ],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not csv_files:
+            return None
+
+        if since is None:
+            return csv_files[0]
+
+        since_ts = since.timestamp() - 2.0
+        for candidate in csv_files:
+            if candidate.stat().st_mtime >= since_ts:
+                return candidate
+
+        return csv_files[0]
 
     def _run_otf_device(self, device, rms_detector: str | None = None):
         """Execute a complete OTF scan with optional plotting and saving."""

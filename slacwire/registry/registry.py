@@ -36,6 +36,7 @@ class RunRegistry:
         beampath: str,
         detector=None,
         filepath=None,
+        scope_data=None,
         plots=None,
         status: str = "ok",
         error=None,
@@ -52,6 +53,7 @@ class RunRegistry:
             beampath: Accelerator beampath identifier, e.g. ``"CU_HXR"``.
             detector: Detector PV name used during the scan.
             filepath: Path to the saved HDF5 data file, if any.
+            scope_data: Path to associated scope CSV data file, if any.
             plots: List of paths to saved PNG plot files.
             status: ``"ok"`` on success, ``"error"`` on failure.
             error: Exception message string when ``status="error"``.
@@ -70,6 +72,7 @@ class RunRegistry:
             "beampath": beampath,
             "detector": detector,
             "filepath": str(filepath) if filepath else None,
+            "scope_data": str(scope_data) if scope_data else None,
             "plots": [str(p) for p in plots] if plots else [],
             "status": status,
             "error": error,

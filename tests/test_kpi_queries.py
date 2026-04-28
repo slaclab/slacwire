@@ -18,6 +18,7 @@ class TestRunRegistryKPIReporter(unittest.TestCase):
                 "beampath": "CU_HXR",
                 "detector": "PMT29150",
                 "filepath": "/tmp/data1.h5",
+                "scope_data": "/tmp/scope/WS28144_xyz_rq34_20260401_010000_success.csv",
                 "plots": ["/tmp/p1.png"],
                 "status": "ok",
                 "error": None,
@@ -30,6 +31,7 @@ class TestRunRegistryKPIReporter(unittest.TestCase):
                 "beampath": "CU_HXR",
                 "detector": "PMT29150",
                 "filepath": None,
+                "scope_data": None,
                 "plots": [],
                 "status": "error",
                 "error": "Scan Failed",
@@ -42,6 +44,7 @@ class TestRunRegistryKPIReporter(unittest.TestCase):
                 "beampath": "CU_SXR",
                 "detector": "PMT11111",
                 "filepath": "/tmp/data3.h5",
+                "scope_data": None,
                 "plots": ["/tmp/p3a.png", "/tmp/p3b.png"],
                 "status": "ok",
                 "error": None,
@@ -54,6 +57,7 @@ class TestRunRegistryKPIReporter(unittest.TestCase):
                 "beampath": "CU_SXR",
                 "detector": None,
                 "filepath": None,
+                "scope_data": None,
                 "plots": [],
                 "status": "weird_status",
                 "error": "Bad State",
@@ -96,6 +100,13 @@ class TestRunRegistryKPIReporter(unittest.TestCase):
             )
             self.assertEqual(plot_rate["runs_with_plots"], 2)
             self.assertEqual(plot_rate["plot_completion_rate_pct"], 50.0)
+
+            scope_rate = reporter.scope_data_completion_rate(
+                start_ts="2026-04-01T00:00:00",
+                end_ts="2026-05-01T00:00:00",
+            )
+            self.assertEqual(scope_rate["runs_with_scope_data"], 1)
+            self.assertEqual(scope_rate["scope_data_completion_rate_pct"], 25.0)
 
     def test_failure_and_recency_queries(self):
         with tempfile.TemporaryDirectory() as tmp:

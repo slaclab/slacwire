@@ -18,6 +18,7 @@ class TestRegistrySQLiteConversion(unittest.TestCase):
                 "beampath": "CU_HXR",
                 "detector": "PMT29150",
                 "filepath": "/tmp/OTF_WS28144_20260424_120000.h5",
+                "scope_data": "/tmp/scope/WS28144_xyz_rq34_20260428_110234_failure.csv",
                 "plots": ["/tmp/plots/a.png", "/tmp/plots/b.png"],
                 "status": "ok",
                 "error": None,
@@ -30,6 +31,7 @@ class TestRegistrySQLiteConversion(unittest.TestCase):
                 "beampath": "CU_SXR",
                 "detector": None,
                 "filepath": None,
+                "scope_data": None,
                 "plots": [],
                 "status": "weird_status",
                 "error": "scan failed",
@@ -55,7 +57,7 @@ class TestRegistrySQLiteConversion(unittest.TestCase):
 
                 first = conn.execute(
                     """
-                    SELECT timestamp_raw, timestamp_iso, method, wire, status, source_json
+                    SELECT timestamp_raw, timestamp_iso, method, wire, scope_data, status, source_json
                     FROM runs
                     WHERE run_id = 1
                     """
@@ -64,13 +66,22 @@ class TestRegistrySQLiteConversion(unittest.TestCase):
                 self.assertEqual(first[1], "2026-04-24T12:00:00")
                 self.assertEqual(first[2], "otf")
                 self.assertEqual(first[3], "WS28144")
-                self.assertEqual(first[4], "ok")
-                self.assertEqual(first[5], str(source_json))
+                self.assertEqual(
+                    first[4],
+                    "/tmp/scope/WS28144_xyz_rq34_20260428_110234_failure.csv",
+                )
+                self.assertEqual(first[5], "ok")
+                self.assertEqual(first[6], str(source_json))
 
                 second_status = conn.execute(
                     "SELECT status FROM runs WHERE run_id = 2"
                 ).fetchone()[0]
                 self.assertEqual(second_status, "unknown")
+
+                second_scope = conn.execute(
+                    "SELECT scope_data FROM runs WHERE run_id = 2"
+                ).fetchone()[0]
+                self.assertIsNone(second_scope)
 
                 plot_rows = conn.execute(
                     """
@@ -97,6 +108,7 @@ class TestRegistrySQLiteConversion(unittest.TestCase):
                 "beampath": "CU_HXR",
                 "detector": "PMT29150",
                 "filepath": None,
+                "scope_data": None,
                 "plots": [],
                 "status": "ok",
                 "error": None,
@@ -124,6 +136,7 @@ class TestRegistrySQLiteConversion(unittest.TestCase):
                 "beampath": "CU_HXR",
                 "detector": "PMT29150",
                 "filepath": None,
+                "scope_data": None,
                 "plots": [],
                 "status": "ok",
                 "error": None,
@@ -138,6 +151,7 @@ class TestRegistrySQLiteConversion(unittest.TestCase):
                 "beampath": "CU_HXR",
                 "detector": "PMT28144",
                 "filepath": None,
+                "scope_data": None,
                 "plots": [],
                 "status": "ok",
                 "error": None,

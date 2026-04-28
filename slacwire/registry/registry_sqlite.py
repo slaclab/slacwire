@@ -59,6 +59,7 @@ def _create_schema(conn: sqlite3.Connection) -> None:
             beampath TEXT NOT NULL,
             detector TEXT,
             filepath TEXT,
+            scope_data TEXT,
             status TEXT NOT NULL,
             error TEXT,
             source_json TEXT NOT NULL,
@@ -143,6 +144,7 @@ def convert_run_registry_json_to_sqlite(
             beampath = entry["beampath"]
             detector = entry.get("detector")
             filepath = entry.get("filepath")
+            scope_data = entry.get("scope_data")
             status = _normalize_status(entry.get("status"))
             error = entry.get("error")
 
@@ -157,11 +159,12 @@ def convert_run_registry_json_to_sqlite(
                     beampath,
                     detector,
                     filepath,
+                    scope_data,
                     status,
                     error,
                     source_json,
                     ingested_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     run_id,
@@ -172,6 +175,7 @@ def convert_run_registry_json_to_sqlite(
                     beampath,
                     detector,
                     filepath,
+                    scope_data,
                     status,
                     error,
                     str(source_json_path),

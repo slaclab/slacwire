@@ -12,7 +12,12 @@ class TestRunRegistry(unittest.TestCase):
             path = Path(tmp) / "registry.json"
             registry = RunRegistry(path=path)
 
-            first = registry.log(method="otf", wire="WS28144", beampath="CU_HXR")
+            first = registry.log(
+                method="otf",
+                wire="WS28144",
+                beampath="CU_HXR",
+                scope_data="/tmp/scope/WS28144/WS28144_xy_rq1_20260424_120000_success.csv",
+            )
             second = registry.log(method="step", wire="WS28144", beampath="CU_HXR")
 
             self.assertEqual(first["run_id"], 1)
@@ -22,6 +27,8 @@ class TestRunRegistry(unittest.TestCase):
             with open(path, "r", encoding="utf-8") as f:
                 on_disk = json.load(f)
             self.assertEqual(len(on_disk), 2)
+            self.assertEqual(first["scope_data"], "/tmp/scope/WS28144/WS28144_xy_rq1_20260424_120000_success.csv")
+            self.assertIsNone(second["scope_data"])
             self.assertEqual(on_disk[-1]["method"], "step")
 
     def test_new_instance_loads_existing_entries(self):
@@ -36,6 +43,7 @@ class TestRunRegistry(unittest.TestCase):
                     "beampath": "CU_HXR",
                     "detector": "PMT29150",
                     "filepath": None,
+                    "scope_data": None,
                     "plots": [],
                     "status": "ok",
                     "error": None,

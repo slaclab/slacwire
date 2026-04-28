@@ -125,6 +125,7 @@ class TestWireScanSuite(unittest.TestCase):
             self.assertEqual(log_kwargs["method"], "otf")
             self.assertEqual(log_kwargs["wire"], "WS28144")
             self.assertIsNone(log_kwargs["filepath"])
+            self.assertIsNone(log_kwargs["scope_data"])
 
     def test_run_device_scan_logs_error_and_reraises(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -151,6 +152,29 @@ class TestWireScanSuite(unittest.TestCase):
             log_kwargs = suite.registry.log.call_args.kwargs
             self.assertEqual(log_kwargs["status"], "error")
             self.assertIn("scan failed", log_kwargs["error"])
+            self.assertIsNone(log_kwargs["scope_data"])
+
+    def test_resolve_scope_data_path_picks_recent_otf_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
+                suite = WireScanSuite(wires=[], outdir=Path(tmp))
+
+            wire = "WS28144"
+            wire_dir = Path(tmp) / wire
+            wire_dir.mkdir(parents=True)
+            older = wire_dir / "WS28144_xy_rq33_20260428_110100_success.csv"
+            newer = wire_dir / "WS28144_xy_rq34_20260428_110234_failure.csv"
+            older.write_text("old", encoding="utf-8")
+            newer.write_text("new", encoding="utf-8")
+
+            with patch("slacwire.suite._SCOPE_DATA_DIR", Path(tmp)):
+                resolved = suite._resolve_scope_data_path(
+                    wire=wire,
+                    method="otf",
+                    since=datetime.now(),
+                )
+
+            self.assertEqual(resolved, newer)
 
     @patch.object(WireScanSuite, "_make_device")
     @patch.object(WireScanSuite, "_run_step_device")

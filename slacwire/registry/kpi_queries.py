@@ -263,6 +263,26 @@ class RunRegistryKPIReporter:
             end_ts=end_ts,
         )
 
+    def scope_data_completion_rate(self, start_ts: str, end_ts: str) -> dict[str, Any]:
+        """Return percent of runs with non-empty scope_data values."""
+        return self._fetch_one(
+            """
+            SELECT
+              COUNT(*) AS total_runs,
+              SUM(CASE WHEN scope_data IS NOT NULL AND TRIM(scope_data) <> '' THEN 1 ELSE 0 END) AS runs_with_scope_data,
+              ROUND(
+                100.0 * SUM(CASE WHEN scope_data IS NOT NULL AND TRIM(scope_data) <> '' THEN 1 ELSE 0 END)
+                / NULLIF(COUNT(*), 0),
+                1
+              ) AS scope_data_completion_rate_pct
+            FROM runs
+            WHERE timestamp_iso >= :start_ts
+              AND timestamp_iso < :end_ts
+            """,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+
     def wire_coverage_recency(self, cutoff_date: str) -> list[dict[str, Any]]:
         """Return last-scan recency per wire and bucket classification."""
         return self._fetch_all(
