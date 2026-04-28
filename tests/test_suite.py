@@ -48,10 +48,15 @@ class _FakeData:
 
 
 class _FakeDevice:
-    def __init__(self, name="WS28144", beam_rate=1000, detector="PMT29150"):
+    def __init__(self, name="WS28144", beam_rate=1000, detector="PMT29150",
+                 active_profiles=("x", "y")):
         self.name = name
         self.beam_rate = beam_rate
         self.metadata = SimpleNamespace(default_detector=detector)
+        self._active_profiles = list(active_profiles)
+
+    def active_profiles(self):
+        return self._active_profiles
 
 
 class TestWireScanSuite(unittest.TestCase):
@@ -113,6 +118,7 @@ class TestWireScanSuite(unittest.TestCase):
             render_kwargs = suite.view.render.call_args.kwargs
             self.assertFalse(render_kwargs["show"])
             self.assertFalse(render_kwargs["save"])
+            self.assertEqual(render_kwargs["profiles"], ("x", "y"))
 
             suite.registry.log.assert_called_once()
             log_kwargs = suite.registry.log.call_args.kwargs
