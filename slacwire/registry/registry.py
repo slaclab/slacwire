@@ -64,6 +64,12 @@ class RunRegistry:
         self._counter = max(self._counter, self._max_run_id())
         self._counter += 1
 
+        normalized_error = self._normalize_error_message(
+            wire=wire,
+            status=status,
+            error=error,
+        )
+
         entry = {
             "run_id": self._counter,
             "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
@@ -75,11 +81,26 @@ class RunRegistry:
             "scope_data": str(scope_data) if scope_data else None,
             "plots": [str(p) for p in plots] if plots else [],
             "status": status,
-            "error": error,
+            "error": normalized_error,
         }
         self.entries.append(entry)
         self._save()
         return entry
+
+    @staticmethod
+    def _normalize_error_message(wire: str, status: str, error):
+        """Ensure persisted scan errors include wire context."""
+        if status != "error" or error is None:
+            return error
+
+        error_text = str(error)
+        if not wire:
+            return error_text
+
+        if wire.lower() in error_text.lower():
+            return error_text
+
+        return f"{wire}: {error_text}"
 
     def _load(self):
         """Load entries from the JSON file on disk, if it exists."""
