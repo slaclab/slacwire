@@ -21,6 +21,7 @@ dependencies = [
     "qtpy",
     "sqlalchemy",
     "pyyaml",
+    "slac-devices",
     "slac-measurements @ git+https://github.com/slaclab/slac-measurements.git@main",
 ]
 description = "Wire scanner beam profile measurement GUI for LCLS"
