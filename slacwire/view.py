@@ -169,7 +169,14 @@ class WireScanView:
         return path
 
     def save_fig_to_path(self, fig, path: Path):
-        """Save a figure to an explicit path with a white background."""
+        """Save a figure to an explicit path with a white background.
+
+        Forces both the figure and all axes patches to be opaque so that
+        img2pdf (used by the logbook poster) does not encounter an alpha channel.
+        """
+        fig.patch.set_facecolor("white")
+        for ax in fig.get_axes():
+            ax.patch.set_facecolor("white")
         fig.savefig(path, dpi=150, bbox_inches="tight", facecolor="white")
 
     def clear_figure(self, fig):
