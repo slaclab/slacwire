@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import numpy as np
 from pathlib import Path
 
@@ -173,7 +174,8 @@ class WireScanView:
         det = np.asarray(data.collection_result.raw_data[detector])
         x = np.arange(len(traj))
 
-        fig, ax1 = plt.subplots()
+        fig = Figure()
+        ax1 = fig.add_subplot(1, 1, 1)
         ax2 = ax1.twinx()
 
         ax1.plot(x, traj, label="Wire Position", color="blue")
@@ -194,7 +196,8 @@ class WireScanView:
         x_stage = np.asarray(p.positions)
         y_meas = np.asarray(p.detectors[detector].values)
 
-        fig, ax = plt.subplots()
+        fig = Figure()
+        ax = fig.add_subplot(1, 1, 1)
         ax.plot(x_stage, y_meas, label="Measured", linestyle="dotted")
         ax.set_xlabel("Wire Position (stage, µm)")
         ax.set_ylabel(f"{detector} Counts")
@@ -235,11 +238,11 @@ class WireScanView:
             f"Amp: {fp.amplitude:.1f} %\n"
             f"Offset: {fp.offset:.1f} %"
         )
-        plt.text(
+        ax.text(
             0.95,
             0.15,
             params_text,
-            transform=plt.gca().transAxes,
+            transform=ax.transAxes,
             va="top",
             ha="left",
             fontsize=10,

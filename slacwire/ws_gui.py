@@ -373,7 +373,6 @@ class WireScanSuiteGUI(Display):
             "",
             str(image_path),
         )
-        self.save_callback()
 
     def update_trajectory_plot(self):
         wire = self.measurement.wire
