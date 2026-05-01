@@ -165,8 +165,16 @@ class WireScanView:
     def save_fig(self, fig, name: str, plotdir: Path, stamp: str):
         """Save matplotlib figure to PNG file."""
         path = plotdir / f"{name}_{stamp}.png"
-        fig.savefig(path, dpi=150, bbox_inches="tight")
+        self.save_fig_to_path(fig, path)
         return path
+
+    def save_fig_to_path(self, fig, path: Path):
+        """Save a figure to an explicit path with a white background."""
+        fig.savefig(path, dpi=150, bbox_inches="tight", facecolor="white")
+
+    def clear_figure(self, fig):
+        """Clear all axes from a figure (e.g. when no data is available)."""
+        fig.clf()
 
     def plot_trajectory(self, data, wire: str, detector: str):
         """Generate a trajectory plot for wire position and detector counts."""

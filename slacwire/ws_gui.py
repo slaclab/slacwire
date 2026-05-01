@@ -358,11 +358,7 @@ class WireScanSuiteGUI(Display):
 
         title = f"{wire} Scan v. {detector} - {profile} Profile"
         image_path = self.suite.plotdir / "profile_plot.png"
-        fig = self.plots.profile_plot.figure
-        fig.set_facecolor("white")
-        for ax in fig.get_axes():
-            ax.set_facecolor("white")
-        fig.savefig(image_path, dpi=150, facecolor="white")
+        self.suite.view.save_fig_to_path(self.plots.profile_plot.figure, image_path)
 
         try:
             elog = importlib.import_module("physicselog")
@@ -407,7 +403,7 @@ class WireScanSuiteGUI(Display):
             self.update_trajectory_plot()
             self.update_profile_plot()
         else:
-            self.plots.trajectory_plot.axes.cla()
-            self.plots.profile_plot.axes.cla()
+            self.suite.view.clear_figure(self.plots.trajectory_plot.figure)
+            self.suite.view.clear_figure(self.plots.profile_plot.figure)
             self.plots.trajectory_plot.draw()
             self.plots.profile_plot.draw()
