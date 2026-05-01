@@ -8,11 +8,11 @@ from pydm import Display
 from PyQt5.QtCore import QThread, pyqtSignal
 from qtpy.QtWidgets import QFileDialog, QVBoxLayout, QWidget
 
-from .widgets.measurement import MeasurementWidget, extract_measurement_data
-from .widgets.navigation import NavigationWidget
-from .widgets.plots import PlotWidget
-from .widgets.text_logger import attach_logger_to_widget
-from .suite import WireScanSuite
+from slacwire.widgets.measurement import MeasurementWidget, extract_measurement_data
+from slacwire.widgets.navigation import NavigationWidget
+from slacwire.widgets.plots import PlotWidget
+from slacwire.widgets.text_logger import attach_logger_to_widget
+from slacwire.suite import WireScanSuite
 
 
 class WireScanSuiteThread(QThread):
@@ -36,11 +36,11 @@ class WireScanSuiteThread(QThread):
         try:
             # Extract wire name from identifier (format: "WIRE:AREA")
             wire_name = self.wire_identifier.split(":")[0]
-            
+
             # Set beampath and detector on suite
             self.suite.beampath = self.beampath
             self.suite.detector = self.detector
-            
+
             # Use suite's orchestrated run_single() method which handles:
             # - Device creation/caching
             # - Execution of OTF or step scan
@@ -49,7 +49,7 @@ class WireScanSuiteThread(QThread):
                 wire=wire_name,
                 scan_mode="otf",            # Force OTF mode for testing! 4/14/26
             )
-            
+
             # Retrieve the latest run data and entry from registry
             try:
                 data = self.suite.latest_run(wire_name)
@@ -60,17 +60,17 @@ class WireScanSuiteThread(QThread):
                     f"No data returned from scan for {wire_name}"
                 )
                 return
-            
+
             # Find the corresponding entry in run_registry (most recent for this wire)
             entry = None
             for reg_entry in reversed(self.suite.registry.entries):
                 if reg_entry.get("wire") == wire_name:
                     entry = reg_entry
                     break
-            
+
             if entry is None:
                 entry = {"wire": wire_name, "timestamp": datetime.now().isoformat()}
-            
+
             method = entry.get("method", "unknown")
             self.scan_complete.emit(wire_name, method, data, entry)
         except Exception as exc:
@@ -279,14 +279,14 @@ class WireScanSuiteGUI(Display):
             self.logger.info("Data saved to %s", path)
         else:
             self.logger.error("Failed to save data for %s", wire)
-    
+
     def _save_data_to_file(self, data, filename_prefix: str) -> Path | None:
         """Save measurement data to HDF5 file.
-        
+
         Args:
             data: The measurement data object to save
             filename_prefix: Prefix for the filename (without timestamp or extension)
-            
+
         Returns:
             Path to saved file, or None if save failed
         """
