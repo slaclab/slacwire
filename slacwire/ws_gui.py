@@ -358,7 +358,11 @@ class WireScanSuiteGUI(Display):
 
         title = f"{wire} Scan v. {detector} - {profile} Profile"
         image_path = self.suite.plotdir / "profile_plot.png"
-        self.plots.profile_plot.figure.savefig(image_path, dpi=150, facecolor="white")
+        fig = self.plots.profile_plot.figure
+        fig.set_facecolor("white")
+        for ax in fig.get_axes():
+            ax.set_facecolor("white")
+        fig.savefig(image_path, dpi=150, facecolor="white")
 
         try:
             elog = importlib.import_module("physicselog")
