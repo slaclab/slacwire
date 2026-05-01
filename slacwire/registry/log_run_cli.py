@@ -18,7 +18,18 @@ import argparse
 import sys
 from pathlib import Path
 
-from .registry import DEFAULT_REGISTRY_PATH, RunRegistry
+# Support both `python3 -m slacwire.registry.log_run_cli` (module execution,
+# where relative imports work) and `python3 /path/to/log_run_cli.py` (direct
+# script execution, where __package__ is None and relative imports fail).
+if __package__:
+    from .registry import DEFAULT_REGISTRY_PATH, RunRegistry
+else:
+    # Add the repo root (three levels up from this file) to sys.path so that
+    # `slacwire` is importable when the script is invoked directly.
+    _repo_root = Path(__file__).resolve().parent.parent.parent
+    if str(_repo_root) not in sys.path:
+        sys.path.insert(0, str(_repo_root))
+    from slacwire.registry.registry import DEFAULT_REGISTRY_PATH, RunRegistry
 
 
 def _build_parser() -> argparse.ArgumentParser:
