@@ -10,12 +10,17 @@ from pathlib import Path
 import re
 from typing import Any
 
-from .kpi_queries import RunRegistryKPIReporter
-from .registry_sqlite import convert_run_registry_json_to_sqlite
+try:
+    from .kpi_queries import RunRegistryKPIReporter
+    from .registry_sqlite import convert_run_registry_json_to_sqlite
+except ImportError:  # pragma: no cover - direct script execution fallback
+    from kpi_queries import RunRegistryKPIReporter
+    from registry_sqlite import convert_run_registry_json_to_sqlite
 
 DEFAULT_PRODUCTION_JSON_PATH = Path(
     "/u1/lcls/physics/data/wire_scan/ws_run_registry.json"
 )
+DEFAULT_OUTPUT_BASE_DIR = Path("~/kabanaty/sandbox/ws_kpi_report").expanduser()
 
 
 def _previous_month_bounds(today: date | None = None) -> tuple[str, str]:
@@ -139,8 +144,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--output-dir",
         default=None,
         help=(
-            "Optional base directory to write JSON artifacts. Results are written "
-            "to a dated subdirectory (YYYY-MM-DD). If omitted, prints bundle JSON to stdout."
+            "Base directory to write JSON artifacts. Results are written "
+            "to a dated subdirectory (YYYY-MM-DD). Defaults to "
+            f"{DEFAULT_OUTPUT_BASE_DIR}."
         ),
     )
     return parser.parse_args(argv)
@@ -201,12 +207,10 @@ def main(argv: list[str] | None = None) -> int:
                     cutoff_date=cutoff_date,
                 )
 
-    if args.output_dir:
-        resolved_output_dir = _resolve_output_dir(args.output_dir)
-        _write_bundle(bundle, resolved_output_dir)
-        print(str(resolved_output_dir))
-    else:
-        print(json.dumps(bundle, indent=2))
+    output_base_dir = args.output_dir or DEFAULT_OUTPUT_BASE_DIR
+    resolved_output_dir = _resolve_output_dir(output_base_dir)
+    _write_bundle(bundle, resolved_output_dir)
+    print(str(resolved_output_dir))
 
     return 0
 

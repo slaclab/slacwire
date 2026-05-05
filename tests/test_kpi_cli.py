@@ -198,6 +198,33 @@ class TestKPICLI(unittest.TestCase):
             self.assertTrue((output_dir / "kpi_bundle.json").exists())
             self.assertFalse((output_dir / date.today().isoformat()).exists())
 
+    def test_cli_uses_default_output_dir_when_output_dir_omitted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            sqlite_path = self._build_sqlite_snapshot(tmp_path)
+            output_base_dir = tmp_path / "ws_kpi_report"
+            output_dir = output_base_dir / date.today().isoformat()
+
+            with patch(
+                "slacwire.registry.kpi_cli.DEFAULT_OUTPUT_BASE_DIR",
+                output_base_dir,
+            ):
+                exit_code = main(
+                    [
+                        "--sqlite-path",
+                        str(sqlite_path),
+                        "--start-ts",
+                        "2026-04-01T00:00:00",
+                        "--end-ts",
+                        "2026-05-01T00:00:00",
+                        "--cutoff-date",
+                        "2026-05-01",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((output_dir / "kpi_bundle.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
