@@ -7,6 +7,7 @@ import json
 import tempfile
 from datetime import date, datetime
 from pathlib import Path
+import re
 from typing import Any
 
 from .kpi_queries import RunRegistryKPIReporter
@@ -86,6 +87,15 @@ def _write_bundle(bundle: dict[str, Any], output_dir: str | Path) -> None:
         section_path.write_text(json.dumps(value, indent=2), encoding="utf-8")
 
 
+def _resolve_output_dir(output_dir: str | Path, today: date | None = None) -> Path:
+    """Return a dated output path under the provided base directory."""
+    base = Path(output_dir)
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", base.name):
+        return base
+    run_date = (today or date.today()).isoformat()
+    return base / run_date
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse CLI options for KPI report generation."""
     parser = argparse.ArgumentParser(
@@ -128,7 +138,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         default=None,
-        help="Optional directory to write JSON artifacts. If omitted, prints bundle JSON to stdout.",
+        help=(
+            "Optional base directory to write JSON artifacts. Results are written "
+            "to a dated subdirectory (YYYY-MM-DD). If omitted, prints bundle JSON to stdout."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -189,7 +202,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
     if args.output_dir:
-        _write_bundle(bundle, args.output_dir)
+        resolved_output_dir = _resolve_output_dir(args.output_dir)
+        _write_bundle(bundle, resolved_output_dir)
+        print(str(resolved_output_dir))
     else:
         print(json.dumps(bundle, indent=2))
 

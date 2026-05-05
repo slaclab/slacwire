@@ -179,6 +179,13 @@ class WireScanSuite:
         # scan.py now orchestrates collection + analysis in one call.
         return measurement.measure(scan_mode="otf", rms_detector=rms_detector)
 
+    def _otf_collect(self, device, rms_detector: str | None = None):
+        """Perform OTF wire data collection without analysis."""
+        measurement = WireBeamProfileMeasurement(
+            beam_profile_device=device, beampath=self.beampath
+        )
+        return measurement.measure(scan_mode="otf", collect_only=True)
+
     def replot(self, wire: str) -> list:
         """Regenerate plots for the latest run of a wire without re-scanning.
 
@@ -198,11 +205,13 @@ class WireScanSuite:
                 break
         file_prefix = "OTF" if method == "otf" else "Step"
 
+        profiles = tuple(data.fit_result.keys()) if hasattr(data, "fit_result") else ()
+
         return self.view.render(
             data,
             wire=wire,
             detector=detector,
-            profiles=tuple(data.fit_result.keys()),
+            profiles=profiles,
             file_prefix=file_prefix,
             plotdir=self.plotdir,
             stamp=self._stamp(),
@@ -266,17 +275,22 @@ class WireScanSuite:
                 path = self.outdir / f"{file_prefix}_{device.name}_{run_stamp}.h5"
                 data.save_to_h5(path)
 
-            plot_paths = self.view.render(
-                data,
-                wire=device.name,
-                detector=selected_detector,
-                profiles=tuple(device.active_profiles()),
-                file_prefix=file_prefix,
-                plotdir=self.plotdir,
-                stamp=run_stamp,
-                show=self.show,
-                save=self.save_plots,
-            )
+            plot_paths = []
+            if self.save_plots or self.show:
+                profiles = ()
+                if hasattr(data, "fit_result"):
+                    profiles = tuple(device.active_profiles())
+                plot_paths = self.view.render(
+                    data,
+                    wire=device.name,
+                    detector=selected_detector,
+                    profiles=profiles,
+                    file_prefix=file_prefix,
+                    plotdir=self.plotdir,
+                    stamp=run_stamp,
+                    show=self.show,
+                    save=self.save_plots,
+                )
             scope_data = self._resolve_scope_data_path(
                 wire=device.name,
                 method=method,
@@ -355,6 +369,16 @@ class WireScanSuite:
             file_prefix="OTF",
         )
 
+    def _run_otf_collect_device(self, device):
+        """Execute OTF collection-only run."""
+        self._run_device_scan(
+            device=device,
+            method="otf_collection",
+            scan_fn=self._otf_collect,
+            rms_detector=None,
+            file_prefix="OTFCollect",
+        )
+
     def run_single(
         self,
         wire: str,
@@ -385,6 +409,35 @@ class WireScanSuite:
             f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
         )
 
+    def collect_single(
+        self,
+        wire: str,
+        scan_mode: str = "otf",
+    ):
+        """Collect raw data for a single wire without analysis."""
+
+        def _get_device_for_wire(wire: str):
+            """Get or lazily create a device for a wire name."""
+            if wire not in self.devices:
+                self.devices[wire] = self._make_device(wire)
+            return self.devices[wire]
+
+        wire_name, _ = self._resolve_wire_and_area(wire)
+        device = _get_device_for_wire(wire_name)
+
+        mode = scan_mode.lower()
+
+        if mode == "otf":
+            self._run_otf_collect_device(device)
+            return
+        if mode == "step":
+            self._run_step_collect_device(device)
+            return
+
+        raise ValueError(
+            f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
+        )
+
     def _run_step_device(self, device, rms_detector: str | None = None):
         """Execute a complete step scan with optional plotting and saving."""
         self._run_device_scan(
@@ -395,6 +448,17 @@ class WireScanSuite:
             file_prefix="Step",
         )
 
+    def _run_step_collect_device(self, device):
+        """Execute step collection-only run."""
+        self._run_device_scan(
+            device=device,
+            method="step_collection",
+            scan_fn=self._step_collect,
+            rms_detector=None,
+            file_prefix="StepCollect",
+            collect_only=True,
+        )
+
     def _step_scan(self, device, rms_detector: str | None = None):
         """Perform a step wire beam profile measurement."""
         measurement = WireBeamProfileMeasurement(
@@ -402,6 +466,13 @@ class WireScanSuite:
         )
         # scan.py now orchestrates collection + analysis in one call.
         return measurement.measure(scan_mode="step", rms_detector=rms_detector)
+
+    def _step_collect(self, device, rms_detector: str | None = None):
+        """Perform a step wire data collection without analysis."""
+        measurement = WireBeamProfileMeasurement(
+            beam_profile_device=device, beampath=self.beampath
+        )
+        return measurement.measure(scan_mode="step", collect_only=True)
 
     def summary(self) -> None:
         """Print the latest scan result for each wire (timestamp, method, detector, σ per profile)."""
@@ -438,13 +509,16 @@ class WireScanSuite:
             print(f"\n{wire}  ({label})")
             print(f"  Latest  |  {timestamp}  |  {method}  |  detector: {detector}")
 
-            for profile, fit in data.fit_result.items():
-                det_fits = fit.detectors
-                if detector not in det_fits:
-                    print(f"    {profile} :  no fit")
-                    continue
-                sigma = det_fits[detector].sigma
-                print(f"    {profile} :  σ = {sigma:>7.1f} µm")
+            if hasattr(data, "fit_result"):
+                for profile, fit in data.fit_result.items():
+                    det_fits = fit.detectors
+                    if detector not in det_fits:
+                        print(f"    {profile} :  no fit")
+                        continue
+                    sigma = det_fits[detector].sigma
+                    print(f"    {profile} :  σ = {sigma:>7.1f} µm")
+            else:
+                print("    collection-only result (analysis skipped)")
 
         wire_label = "wire" + ("s" if len(wires_with_results) != 1 else "")
         run_label = "run" + ("s" if total_runs != 1 else "")
