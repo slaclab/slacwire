@@ -7,6 +7,14 @@ import json
 import os
 import sys
 import subprocess
+import tempfile
+
+try:
+    from slacwire.registry.kpi_queries import RunRegistryKPIReporter
+    from slacwire.registry.registry_sqlite import convert_run_registry_json_to_sqlite
+except ImportError:
+    from kpi_queries import RunRegistryKPIReporter
+    from registry_sqlite import convert_run_registry_json_to_sqlite
 
 def main():
     """Run KPI report for yesterday and display key metrics."""
@@ -18,37 +26,41 @@ def main():
     end_ts = today.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
 
     try:
-        # Run the KPI report
-        # Add parent directory to PYTHONPATH so slacwire module can be imported
-        script_dir = Path(__file__).parent.parent.parent  # slacwire root
-        env = os.environ.copy()
-        env["PYTHONPATH"] = str(script_dir)
+        # Use production registry JSON
+        json_path = Path("/u1/lcls/physics/data/wire_scan/ws_run_registry.json")
 
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "slacwire.registry.kpi_cli",
-                "--start-ts", start_ts,
-                "--end-ts", end_ts,
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-            env=env,
-        )
+        if not json_path.exists():
+            print(f"Error: Registry JSON not found at {json_path}")
+            return 1
 
-        # Parse the output directory path
-        output_dir = Path(result.stdout.strip())
-        bundle_path = output_dir / "kpi_bundle.json"
+        with tempfile.TemporaryDirectory() as tmp:
+            sqlite_path = Path(tmp) / "run_registry_reporting.sqlite3"
+            convert_run_registry_json_to_sqlite(
+                source_json=json_path,
+                sqlite_path=sqlite_path,
+                overwrite=True,
+            )
+            reporter = RunRegistryKPIReporter.from_sqlite_path(sqlite_path)
+            snapshot = reporter.executive_kpi_snapshot(start_ts, end_ts)
 
-        if bundle_path.exists():
-            bundle = json.loads(bundle_path.read_text())
-            snapshot = bundle.get("executive_kpi_snapshot", {})
+            # Get distinct wires
+            wires = reporter._fetch_all(
+                """
+                SELECT DISTINCT wire
+                FROM runs
+                WHERE timestamp_iso >= :start_ts
+                  AND timestamp_iso < :end_ts
+                ORDER BY wire
+                """,
+                start_ts=start_ts,
+                end_ts=end_ts,
+            )
 
             total_runs = snapshot.get("total_runs", 0)
             success_rate = snapshot.get("success_rate_pct", 0)
             successful = snapshot.get("successful_runs", 0)
             failed = snapshot.get("failed_runs", 0)
-            distinct_wires = snapshot.get("distinct_wires_scanned", 0)
+            wire_names = [w["wire"] for w in wires]
 
             print(f"\n{'='*50}")
             print(f"Wire Scan KPI Summary - Since {yesterday.strftime('%Y-%m-%d')}")
@@ -57,17 +69,13 @@ def main():
             print(f"Success rate:   {success_rate}%")
             print(f"  ✓ Successful: {successful}")
             print(f"  ✗ Failed:     {failed}")
-            print(f"Distinct wires: {distinct_wires}")
+            print(f"Wires scanned:  {', '.join(wire_names) if wire_names else 'None'}")
             print(f"{'='*50}\n")
-        else:
-            print(f"Error: Bundle file not found at {bundle_path}")
-            return 1
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error running KPI report: {e.stderr}")
-        return 1
     except Exception as e:
         print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
 
     return 0
