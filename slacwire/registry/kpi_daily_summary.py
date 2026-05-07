@@ -4,6 +4,7 @@
 from datetime import datetime, timedelta
 from pathlib import Path
 import json
+import os
 import sys
 import subprocess
 
@@ -18,6 +19,11 @@ def main():
 
     try:
         # Run the KPI report
+        # Add parent directory to PYTHONPATH so slacwire module can be imported
+        script_dir = Path(__file__).parent.parent.parent  # slacwire root
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(script_dir)
+
         result = subprocess.run(
             [
                 sys.executable, "-m", "slacwire.registry.kpi_cli",
@@ -27,6 +33,7 @@ def main():
             capture_output=True,
             text=True,
             check=True,
+            env=env,
         )
 
         # Parse the output directory path
