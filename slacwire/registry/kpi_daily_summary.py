@@ -48,6 +48,7 @@ def main():
             success_rate = snapshot.get("success_rate_pct", 0)
             successful = snapshot.get("successful_runs", 0)
             failed = snapshot.get("failed_runs", 0)
+            distinct_wires = snapshot.get("distinct_wires_scanned", 0)
 
             print(f"\n{'='*50}")
             print(f"Wire Scan KPI Summary - Since {yesterday.strftime('%Y-%m-%d')}")
@@ -56,6 +57,7 @@ def main():
             print(f"Success rate:   {success_rate}%")
             print(f"  ✓ Successful: {successful}")
             print(f"  ✗ Failed:     {failed}")
+            print(f"Distinct wires: {distinct_wires}")
             print(f"{'='*50}\n")
         else:
             print(f"Error: Bundle file not found at {bundle_path}")
