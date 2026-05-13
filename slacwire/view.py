@@ -196,8 +196,9 @@ class WireScanView:
         ax1.set_xlabel("Scan Point")
         ax1.set_ylabel("Wire Position (um)")
 
-        ax2.plot(x, det, label=f"{detector} counts", color="orange")
-        ax2.set_ylabel(f"{detector} counts")
+        units = "% Loss" if detector == "TMITLOSS" else "Counts"
+        ax2.plot(x, det, label=f"{detector} {units}", color="orange")
+        ax2.set_ylabel(f"{detector} ({units})")
 
         ax1.set_title(f"{wire} Motion Trajectory")
 
@@ -214,7 +215,8 @@ class WireScanView:
         ax = fig.add_subplot(1, 1, 1)
         ax.plot(x_stage, y_meas, label="Measured", linestyle="dotted")
         ax.set_xlabel("Wire Position (stage, µm)")
-        ax.set_ylabel(f"{detector} Counts")
+        units = "% Loss" if detector == "TMITLOSS" else "Counts"
+        ax.set_ylabel(f"{detector} ({units})")
 
         scale = 1 if profile == "u" else np.cos(np.deg2rad(45))
 

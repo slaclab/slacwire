@@ -186,14 +186,18 @@ class WireScanSuite:
         )
         return measurement.measure(scan_mode="otf", collect_only=True)
 
-    def replot(self, wire: str) -> list:
+    def replot(self, wire: str, detector: str | None = None) -> list:
         """Regenerate plots for the latest run of a wire without re-scanning.
 
-        Uses the suite's current ``profiles``, ``show``, and ``save_plots`` flags.
+        Args:
+            wire: Wire device name.
+            detector: Override detector for plots. If None, uses the detector
+                from the original scan metadata.
         """
         data = self.latest_run(wire)
-        meta = data.collection_result.metadata
-        detector = meta.rms_detector or meta.default_detector
+        if detector is None:
+            meta = data.collection_result.metadata
+            detector = meta.rms_detector or meta.default_detector
         if ":" in detector:
             detector = detector.split(":", 1)[0]
 
