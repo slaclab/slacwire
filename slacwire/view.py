@@ -251,8 +251,8 @@ class WireScanView:
         params_text = (
             f"Mean: {fp.mean:.1f} um\n"
             f"Sigma: {fp.sigma:.1f} um\n"
-            f"Amp: {fp.amplitude:.1f} %\n"
-            f"Offset: {fp.offset:.1f} %"
+            f"Amp: {fp.amplitude:.1f} {units}\n"
+            f"Offset: {fp.offset:.1f} {units}"
         )
         ax.text(
             0.95,
