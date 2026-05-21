@@ -117,15 +117,15 @@ class WireScanSuite:
     registry: RunRegistry = field(default_factory=RunRegistry)
     view: object = field(init=False)
 
-    def __post_init__(self):
-        """Initialize the wire scan suite after dataclass construction.
+    # ──────────────────────────────────────────────────────────────────────
+    # Dunder methods
+    # ──────────────────────────────────────────────────────────────────────
 
-        Creates device instances and ensures output directories exist.
-        """
+    def __post_init__(self):
+        """Initialize the wire scan suite after dataclass construction."""
         self._build_devices()
         self.view = self._build_view()
         self.outdir = Path(self.outdir)
-        # Keep plot output co-located with each dated data directory.
         self.plotdir = self.outdir / "plots"
         self.outdir.mkdir(parents=True, exist_ok=True)
         self.plotdir.mkdir(parents=True, exist_ok=True)
@@ -148,15 +148,34 @@ class WireScanSuite:
             f"result_counts={result_counts!r})"
         )
 
-    def _build_devices(self):
-        """Initialize all wire device instances based on configured wires."""
-        self.devices = {wire: self._make_device(wire) for wire in self.wires}
+    # ──────────────────────────────────────────────────────────────────────
+    # Public methods (alphabetical)
+    # ──────────────────────────────────────────────────────────────────────
 
-    def _build_view(self):
-        """Create the plotting view instance used by the suite."""
-        from .view import WireScanView
+    def collect_single(
+        self,
+        wire: str,
+        scan_mode: str = "otf",
+    ):
+        """Collect raw data for a single wire without analysis."""
+        wire_name, _ = self._resolve_wire_and_area(wire)
+        device = self._get_device(wire_name)
+        mode = scan_mode.lower()
 
-        return WireScanView()
+        if mode not in ("otf", "step"):
+            raise ValueError(
+                f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
+            )
+
+        self._run_device_scan(
+            device=device,
+            method=f"{mode}_collection",
+            scan_fn=lambda dev, rms_detector=None: self._measure(
+                dev, scan_mode=mode, collect_only=True
+            ),
+            rms_detector=None,
+            file_prefix=f"{'OTF' if mode == 'otf' else 'Step'}Collect",
+        )
 
     def latest_run(self, wire: str):
         """Retrieve the most recent run result for a given wire."""
@@ -166,34 +185,8 @@ class WireScanSuite:
             raise KeyError(msg)
         return runs[-1]
 
-    def _make_device(self, wire: str):
-        """Create a wire device instance."""
-        wire_name, area = self._resolve_wire_and_area(wire)
-        return create_wire(area, wire_name)
-
-    def _otf_scan(self, device, rms_detector: str | None = None):
-        """Perform an on-the-fly (OTF) wire beam profile measurement."""
-        measurement = WireBeamProfileMeasurement(
-            beam_profile_device=device, beampath=self.beampath
-        )
-        # scan.py now orchestrates collection + analysis in one call.
-        return measurement.measure(scan_mode="otf", rms_detector=rms_detector)
-
-    def _otf_collect(self, device, rms_detector: str | None = None):
-        """Perform OTF wire data collection without analysis."""
-        measurement = WireBeamProfileMeasurement(
-            beam_profile_device=device, beampath=self.beampath
-        )
-        return measurement.measure(scan_mode="otf", collect_only=True)
-
     def replot(self, wire: str, detector: str | None = None) -> list:
-        """Regenerate plots for the latest run of a wire without re-scanning.
-
-        Args:
-            wire: Wire device name.
-            detector: Override detector for plots. If None, uses the detector
-                from the original scan metadata.
-        """
+        """Regenerate plots for the latest run of a wire without re-scanning."""
         data = self.latest_run(wire)
         if detector is None:
             meta = data.collection_result.metadata
@@ -201,7 +194,6 @@ class WireScanSuite:
         if ":" in detector:
             detector = detector.split(":", 1)[0]
 
-        # Infer scan method from registry for the file prefix.
         method = "otf"
         for entry in reversed(self.registry.entries):
             if entry.get("wire") == wire:
@@ -223,6 +215,165 @@ class WireScanSuite:
             save=self.save_plots,
         )
 
+    def run_all(
+        self,
+        scan_mode: str = "otf",
+        rms_detector: str | None = None,
+    ):
+        """Run all configured wires in the requested scan mode."""
+        for wire in self.wires:
+            self.run_single(
+                wire=wire,
+                scan_mode=scan_mode,
+                rms_detector=rms_detector,
+            )
+
+    def run_single(
+        self,
+        wire: str,
+        scan_mode: str = "otf",
+        rms_detector: str | None = None,
+    ):
+        """Run a single wire in the requested scan mode."""
+        wire_name, _ = self._resolve_wire_and_area(wire)
+        device = self._get_device(wire_name)
+        mode = scan_mode.lower()
+
+        if mode not in ("otf", "step"):
+            raise ValueError(
+                f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
+            )
+
+        self._run_device_scan(
+            device=device,
+            method=mode,
+            scan_fn=lambda dev, **kw: self._measure(dev, scan_mode=mode, **kw),
+            rms_detector=rms_detector,
+            file_prefix="OTF" if mode == "otf" else "Step",
+        )
+
+    def summary(self) -> None:
+        """Print the latest scan result for each wire."""
+        _SEP = "─" * 77
+        print(f"\nWire Scan Suite  ·  beampath: {self.beampath}")
+        print(_SEP)
+
+        wires_with_results = [w for w in self.wires if self.results.get(w)]
+        total_runs = sum(len(v) for v in self.results.values())
+
+        if not wires_with_results:
+            print("  No results yet.")
+            print(_SEP)
+            return
+
+        for wire in wires_with_results:
+            runs = self.results[wire]
+            data = self.latest_run(wire)
+            run_count = len(runs)
+
+            method = "—"
+            for entry in reversed(self.registry.entries):
+                if entry.get("wire") == wire:
+                    method = entry.get("method", "—")
+                    break
+
+            meta = data.collection_result.metadata
+            ts = meta.timestamp
+            timestamp = ts.strftime("%Y%m%d_%H%M%S") if ts is not None else "—"
+            detector = meta.rms_detector or meta.default_detector
+
+            label = f"{run_count} run" + ("s" if run_count != 1 else "")
+            print(f"\n{wire}  ({label})")
+            print(f"  Latest  |  {timestamp}  |  {method}  |  detector: {detector}")
+
+            if hasattr(data, "fit_result"):
+                for profile, fit in data.fit_result.items():
+                    det_fits = fit.detectors
+                    if detector not in det_fits:
+                        print(f"    {profile} :  no fit")
+                        continue
+                    sigma = det_fits[detector].sigma
+                    print(f"    {profile} :  σ = {sigma:>7.1f} µm")
+            else:
+                print("    collection-only result (analysis skipped)")
+
+        wire_label = "wire" + ("s" if len(wires_with_results) != 1 else "")
+        run_label = "run" + ("s" if total_runs != 1 else "")
+        print(f"\n{_SEP}")
+        print(f"Total: {len(wires_with_results)} {wire_label}, {total_runs} {run_label}\n")
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Private methods (alphabetical)
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _build_devices(self):
+        """Initialize all wire device instances based on configured wires."""
+        self.devices = {wire: self._make_device(wire) for wire in self.wires}
+
+    def _build_view(self):
+        """Create the plotting view instance used by the suite."""
+        from .view import WireScanView
+
+        return WireScanView()
+
+    def _get_device(self, wire: str):
+        """Get or lazily create a device for a wire name."""
+        if wire not in self.devices:
+            self.devices[wire] = self._make_device(wire)
+        return self.devices[wire]
+
+    def _make_device(self, wire: str):
+        """Create a wire device instance."""
+        wire_name, area = self._resolve_wire_and_area(wire)
+        return create_wire(area, wire_name)
+
+    def _measure(self, device, scan_mode: str, collect_only: bool = False, rms_detector: str | None = None):
+        """Create a measurement and execute it."""
+        measurement = WireBeamProfileMeasurement(
+            beam_profile_device=device, beampath=self.beampath
+        )
+        return measurement.measure(
+            scan_mode=scan_mode,
+            collect_only=collect_only,
+            rms_detector=rms_detector,
+        )
+
+    def _resolve_scope_data_path(
+        self,
+        wire: str,
+        method: str,
+        since: datetime | None = None,
+    ) -> Path | None:
+        """Return latest scope CSV path for an OTF run, if available."""
+        if method != "otf":
+            return None
+
+        wire_dir = _SCOPE_DATA_DIR / wire
+        if not wire_dir.exists() or not wire_dir.is_dir():
+            return None
+
+        csv_files = sorted(
+            [
+                path
+                for path in wire_dir.glob(f"{wire}_*.csv")
+                if path.is_file()
+            ],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not csv_files:
+            return None
+
+        if since is None:
+            return csv_files[0]
+
+        since_ts = since.timestamp() - 2.0
+        for candidate in csv_files:
+            if candidate.stat().st_mtime >= since_ts:
+                return candidate
+
+        return csv_files[0]
+
     def _resolve_wire_and_area(self, wire: str) -> tuple[str, str]:
         """Resolve a wire input to wire name and area."""
         wire = wire.strip()
@@ -238,19 +389,6 @@ class WireScanSuite:
             )
         return wire, area
 
-    def run_all(
-        self,
-        scan_mode: str = "otf",
-        rms_detector: str | None = None,
-    ):
-        """Run all configured wires in the requested scan mode."""
-        for wire in self.wires:
-            self.run_single(
-                wire=wire,
-                scan_mode=scan_mode,
-                rms_detector=rms_detector,
-            )
-
     def _run_device_scan(
         self,
         device,
@@ -262,7 +400,6 @@ class WireScanSuite:
         """Execute common scan flow for a single device and method."""
         scan_started = datetime.now()
         run_stamp = scan_started.strftime("%Y%m%d_%H%M%S")
-        # Resolve one detector choice for the entire scan.
         default_detector = device.metadata.default_detector
         selected_detector = (
             rms_detector if rms_detector is not None else default_detector
@@ -326,208 +463,6 @@ class WireScanSuite:
                 error=str(e),
             )
             raise
-
-    def _resolve_scope_data_path(
-        self,
-        wire: str,
-        method: str,
-        since: datetime | None = None,
-    ) -> Path | None:
-        """Return latest scope CSV path for an OTF run, if available."""
-        if method != "otf":
-            return None
-
-        wire_dir = _SCOPE_DATA_DIR / wire
-        if not wire_dir.exists() or not wire_dir.is_dir():
-            return None
-
-        csv_files = sorted(
-            [
-                path
-                for path in wire_dir.glob(f"{wire}_*.csv")
-                if path.is_file()
-            ],
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
-        if not csv_files:
-            return None
-
-        if since is None:
-            return csv_files[0]
-
-        since_ts = since.timestamp() - 2.0
-        for candidate in csv_files:
-            if candidate.stat().st_mtime >= since_ts:
-                return candidate
-
-        return csv_files[0]
-
-    def _run_otf_device(self, device, rms_detector: str | None = None):
-        """Execute a complete OTF scan with optional plotting and saving."""
-        self._run_device_scan(
-            device=device,
-            method="otf",
-            scan_fn=self._otf_scan,
-            rms_detector=rms_detector,
-            file_prefix="OTF",
-        )
-
-    def _run_otf_collect_device(self, device):
-        """Execute OTF collection-only run."""
-        self._run_device_scan(
-            device=device,
-            method="otf_collection",
-            scan_fn=self._otf_collect,
-            rms_detector=None,
-            file_prefix="OTFCollect",
-        )
-
-    def run_single(
-        self,
-        wire: str,
-        scan_mode: str = "otf",
-        rms_detector: str | None = None,
-    ):
-        """Run a single wire in the requested scan mode."""
-
-        def _get_device_for_wire(wire: str):
-            """Get or lazily create a device for a wire name."""
-            if wire not in self.devices:
-                self.devices[wire] = self._make_device(wire)
-            return self.devices[wire]
-
-        wire_name, _ = self._resolve_wire_and_area(wire)
-        device = _get_device_for_wire(wire_name)
-
-        mode = scan_mode.lower()
-
-        if mode == "otf":
-            self._run_otf_device(device, rms_detector=rms_detector)
-            return
-        if mode == "step":
-            self._run_step_device(device, rms_detector=rms_detector)
-            return
-
-        raise ValueError(
-            f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
-        )
-
-    def collect_single(
-        self,
-        wire: str,
-        scan_mode: str = "otf",
-    ):
-        """Collect raw data for a single wire without analysis."""
-
-        def _get_device_for_wire(wire: str):
-            """Get or lazily create a device for a wire name."""
-            if wire not in self.devices:
-                self.devices[wire] = self._make_device(wire)
-            return self.devices[wire]
-
-        wire_name, _ = self._resolve_wire_and_area(wire)
-        device = _get_device_for_wire(wire_name)
-
-        mode = scan_mode.lower()
-
-        if mode == "otf":
-            self._run_otf_collect_device(device)
-            return
-        if mode == "step":
-            self._run_step_collect_device(device)
-            return
-
-        raise ValueError(
-            f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
-        )
-
-    def _run_step_device(self, device, rms_detector: str | None = None):
-        """Execute a complete step scan with optional plotting and saving."""
-        self._run_device_scan(
-            device=device,
-            method="step",
-            scan_fn=self._step_scan,
-            rms_detector=rms_detector,
-            file_prefix="Step",
-        )
-
-    def _run_step_collect_device(self, device):
-        """Execute step collection-only run."""
-        self._run_device_scan(
-            device=device,
-            method="step_collection",
-            scan_fn=self._step_collect,
-            rms_detector=None,
-            file_prefix="StepCollect",
-            collect_only=True,
-        )
-
-    def _step_scan(self, device, rms_detector: str | None = None):
-        """Perform a step wire beam profile measurement."""
-        measurement = WireBeamProfileMeasurement(
-            beam_profile_device=device, beampath=self.beampath
-        )
-        # scan.py now orchestrates collection + analysis in one call.
-        return measurement.measure(scan_mode="step", rms_detector=rms_detector)
-
-    def _step_collect(self, device, rms_detector: str | None = None):
-        """Perform a step wire data collection without analysis."""
-        measurement = WireBeamProfileMeasurement(
-            beam_profile_device=device, beampath=self.beampath
-        )
-        return measurement.measure(scan_mode="step", collect_only=True)
-
-    def summary(self) -> None:
-        """Print the latest scan result for each wire (timestamp, method, detector, σ per profile)."""
-        _SEP = "─" * 77
-        print(f"\nWire Scan Suite  ·  beampath: {self.beampath}")
-        print(_SEP)
-
-        wires_with_results = [w for w in self.wires if self.results.get(w)]
-        total_runs = sum(len(v) for v in self.results.values())
-
-        if not wires_with_results:
-            print("  No results yet.")
-            print(_SEP)
-            return
-
-        for wire in wires_with_results:
-            runs = self.results[wire]
-            data = self.latest_run(wire)
-            run_count = len(runs)
-
-            # Resolve scan method from the most recent registry entry for this wire.
-            method = "—"
-            for entry in reversed(self.registry.entries):
-                if entry.get("wire") == wire:
-                    method = entry.get("method", "—")
-                    break
-
-            meta = data.collection_result.metadata
-            ts = meta.timestamp
-            timestamp = ts.strftime("%Y%m%d_%H%M%S") if ts is not None else "—"
-            detector = meta.rms_detector or meta.default_detector
-
-            label = f"{run_count} run" + ("s" if run_count != 1 else "")
-            print(f"\n{wire}  ({label})")
-            print(f"  Latest  |  {timestamp}  |  {method}  |  detector: {detector}")
-
-            if hasattr(data, "fit_result"):
-                for profile, fit in data.fit_result.items():
-                    det_fits = fit.detectors
-                    if detector not in det_fits:
-                        print(f"    {profile} :  no fit")
-                        continue
-                    sigma = det_fits[detector].sigma
-                    print(f"    {profile} :  σ = {sigma:>7.1f} µm")
-            else:
-                print("    collection-only result (analysis skipped)")
-
-        wire_label = "wire" + ("s" if len(wires_with_results) != 1 else "")
-        run_label = "run" + ("s" if total_runs != 1 else "")
-        print(f"\n{_SEP}")
-        print(f"Total: {len(wires_with_results)} {wire_label}, {total_runs} {run_label}\n")
 
     def _stamp(self) -> str:
         """Generate a timestamp string for file naming."""
