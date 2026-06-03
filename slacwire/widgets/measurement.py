@@ -91,9 +91,9 @@ class MeasurementWidget(QGroupBox):
         self.bpm_list.blockSignals(True)
         self.bpm_list.clear()
 
-        bpms = getattr(self.my_wire.metadata, "bpms_before_wire", [])
-        if bpms:
-            for bpm in bpms:
+        tmitloss = getattr(self.my_wire.metadata, "tmitloss", None)
+        if tmitloss:
+            for bpm in tmitloss.upstream:
                 self.bpm_list.addItem(bpm)
 
         self.bpm_list.blockSignals(False)

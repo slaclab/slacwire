@@ -177,6 +177,14 @@ class WireScanSuite:
             file_prefix=f"{'OTF' if mode == 'otf' else 'Step'}Collect",
         )
 
+    def motion_test(self, wire: str):
+        """Run beam-less motion validation for a single wire."""
+        from .motion_test import run_motion_test
+
+        wire_name, _ = self._resolve_wire_and_area(wire)
+        device = self._get_device(wire_name)
+        return run_motion_test(device)
+
     def latest_run(self, wire: str):
         """Retrieve the most recent run result for a given wire."""
         runs = self.results.get(wire, [])
