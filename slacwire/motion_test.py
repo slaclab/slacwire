@@ -96,8 +96,6 @@ def _poll_motor_rbv(
     settle_count = 0
     start = time.monotonic()
 
-    time.sleep(0.5)
-
     while True:
         pos = device.motor_rbv
         positions.append(pos)
