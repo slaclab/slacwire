@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-from slac_devices.reader import create_device
+from slac_devices.reader import create_wire
 from slac_measurements.wires.scan import WireBeamProfileMeasurement
 from .registry import RunRegistry
 
@@ -13,6 +13,39 @@ logger = logging.getLogger("wire_scan_logger")
 Beampath = Literal["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
 
 
+# Lookup table for wire name to area mapping.
+WIRE_AREA_LOOKUP = {
+    "WS01": "DL1",
+    "WS02": "DL1",
+    "WS03": "DL1",
+    "WS04": "DL1",
+    "WS11": "BC1",
+    "WS12": "BC1",
+    "WS13": "BC1",
+    "WS27644": "L3",
+    "WS28144": "L3",
+    "WS28444": "L3",
+    "WS28744": "L3",
+    "WS0H04": "HTR",
+    "WSDG01": "DIAG0",
+    "WSC104": "COL1",
+    "WSC106": "COL1",
+    "WSC108": "COL1",
+    "WSC110": "COL1",
+    "WSEMIT2": "EMIT2",
+    "WSBP2": "BYP",
+    "WSBP3": "BYP",
+    "WSBP4": "BYP",
+    "WSSP1D": "SPD",
+    "WS31": "LTUH",
+    "WS32": "LTUH",
+    "WS33": "LTUH",
+    "WS34": "LTUH",
+    "WS31B": "LTUS",
+    "WS32B": "LTUS",
+    "WS33B": "LTUS",
+    "WS34B": "LTUS",
+}
 _BASE_DIR = "/u1/lcls/physics/data/wire_scan"
 _SCOPE_DATA_DIR = Path("/u1/lcls/physics/genMotion/wirescanners/scope_data")
 
@@ -125,7 +158,7 @@ class WireScanSuite:
         scan_mode: str = "otf",
     ):
         """Collect raw data for a single wire without analysis."""
-        wire_name = self._resolve_wire(wire)
+        wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
         mode = scan_mode.lower()
 
@@ -148,7 +181,7 @@ class WireScanSuite:
         """Run beam-less motion validation for a single wire."""
         from .motion_test import run_motion_test
 
-        wire_name = self._resolve_wire(wire)
+        wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
         return run_motion_test(device)
 
@@ -210,7 +243,7 @@ class WireScanSuite:
         rms_detector: str | None = None,
     ):
         """Run a single wire in the requested scan mode."""
-        wire_name = self._resolve_wire(wire)
+        wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
         mode = scan_mode.lower()
 
@@ -299,13 +332,8 @@ class WireScanSuite:
 
     def _make_device(self, wire: str):
         """Create a wire device instance."""
-        wire_name = self._resolve_wire(wire)
-        device = create_device(wire_name)
-        if device is None:
-            raise ValueError(
-                f"Could not create device for wire '{wire_name}'."
-            )
-        return device
+        wire_name, area = self._resolve_wire_and_area(wire)
+        return create_wire(area, wire_name)
 
     def _measure(self, device, scan_mode: str, collect_only: bool = False, rms_detector: str | None = None):
         """Create a measurement and execute it."""
@@ -354,14 +382,20 @@ class WireScanSuite:
 
         return csv_files[0]
 
-    def _resolve_wire(self, wire: str) -> str:
-        """Validate and normalize a wire name input."""
+    def _resolve_wire_and_area(self, wire: str) -> tuple[str, str]:
+        """Resolve a wire input to wire name and area."""
         wire = wire.strip()
 
         if not wire:
             raise ValueError("Wire name cannot be empty.")
 
-        return wire
+        area = WIRE_AREA_LOOKUP.get(wire)
+        if area is None:
+            raise KeyError(
+                f"No area mapping found for wire '{wire}'. Add it to "
+                "WIRE_AREA_LOOKUP."
+            )
+        return wire, area
 
     def _run_device_scan(
         self,
