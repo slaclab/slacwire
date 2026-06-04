@@ -182,6 +182,46 @@ class WireScanView:
         """Clear all axes from a figure (e.g. when no data is available)."""
         fig.clf()
 
+    def render_motion_test(
+        self,
+        data,
+        wire: str,
+        plotdir: Path,
+        stamp: str,
+        show: bool = True,
+        save: bool = True,
+    ) -> Path | None:
+        """Render trajectory-only plot for a beam-less motion test.
+
+        Args:
+            data: WireMeasurementCollectionResult from run_motion_test.
+            wire: Wire device name.
+            plotdir: Directory to write PNG file into.
+            stamp: Timestamp string for filename.
+            show: If True, display the figure interactively.
+            save: If True, save PNG to plotdir.
+
+        Returns:
+            Path to saved PNG, or None if save is False.
+        """
+        positions = np.asarray(data.raw_data[wire])
+        scan_points = np.arange(len(positions))
+
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        ax.plot(scan_points, positions, color="#1f77b4")
+        ax.set_xlabel("Scan Point")
+        ax.set_ylabel("Wire Position (µm)")
+        ax.set_title(f"{wire} Motion Test Trajectory")
+        fig.tight_layout()
+
+        path = None
+        if save and plotdir is not None:
+            path = self.save_fig(fig, f"MotionTest_Trajectory_{wire}", plotdir, stamp)
+        if show:
+            fig.show()
+        return path
+
     def plot_trajectory(self, data, wire: str, detector: str):
         """Generate a trajectory plot for wire position and detector counts."""
         traj = np.asarray(data.collection_result.raw_data[wire])

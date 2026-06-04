@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from .view import WireScanView
 
 from slac_devices.reader import create_wire
 from slac_measurements.wires.scan import WireBeamProfileMeasurement
@@ -115,7 +120,7 @@ class WireScanSuite:
     save_plots: bool = True
     results: dict = field(default_factory=dict)
     registry: RunRegistry = field(default_factory=RunRegistry)
-    view: object = field(init=False)
+    view: "WireScanView" = field(init=False)  # type: ignore[assignment]
 
     # ──────────────────────────────────────────────────────────────────────
     # Dunder methods
@@ -157,7 +162,12 @@ class WireScanSuite:
         wire: str,
         scan_mode: str = "otf",
     ):
-        """Collect raw data for a single wire without analysis."""
+        """Collect raw data for a single wire without analysis.
+
+        Args:
+            wire: Wire name (e.g. "WS28144"). Must exist in WIRE_AREA_LOOKUP.
+            scan_mode: "otf" (on-the-fly) or "step". Default "otf".
+        """
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
         mode = scan_mode.lower()
@@ -177,16 +187,38 @@ class WireScanSuite:
             file_prefix=f"{'OTF' if mode == 'otf' else 'Step'}Collect",
         )
 
-    def motion_test(self, wire: str):
-        """Run beam-less motion validation for a single wire."""
+    def motion_test(self, wire: str, plot: bool = True):
+        """Run beam-less motion validation for a single wire.
+
+        Args:
+            wire: Wire name (e.g. "WS28144"). Must exist in WIRE_AREA_LOOKUP.
+            plot: If True, display trajectory plot of motor position vs scan
+                point. Also saves PNG if suite.save_plots is True.
+        """
         from .motion_test import run_motion_test
 
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
-        return run_motion_test(device)
+        result = run_motion_test(device)
+
+        if plot:
+            self.view.render_motion_test(
+                result,
+                wire=wire_name,
+                plotdir=self.plotdir,
+                stamp=self._stamp(),
+                show=self.show,
+                save=self.save_plots,
+            )
+
+        return result
 
     def latest_run(self, wire: str):
-        """Retrieve the most recent run result for a given wire."""
+        """Retrieve the most recent run result for a given wire.
+
+        Args:
+            wire: Wire name to look up in stored results.
+        """
         runs = self.results.get(wire, [])
         if not runs:
             msg = f"No results found for {wire}. Run it first."
@@ -194,7 +226,13 @@ class WireScanSuite:
         return runs[-1]
 
     def replot(self, wire: str, detector: str | None = None) -> list:
-        """Regenerate plots for the latest run of a wire without re-scanning."""
+        """Regenerate plots for the latest run of a wire without re-scanning.
+
+        Args:
+            wire: Wire name whose latest result will be re-plotted.
+            detector: Detector for profile plots. If None, uses the detector
+                recorded in the run metadata.
+        """
         data = self.latest_run(wire)
         if detector is None:
             meta = data.collection_result.metadata
@@ -228,7 +266,13 @@ class WireScanSuite:
         scan_mode: str = "otf",
         rms_detector: str | None = None,
     ):
-        """Run all configured wires in the requested scan mode."""
+        """Run all configured wires in the requested scan mode.
+
+        Args:
+            scan_mode: "otf" (on-the-fly) or "step". Default "otf".
+            rms_detector: Override detector for RMS calculation. If None,
+                uses the device's default detector.
+        """
         for wire in self.wires:
             self.run_single(
                 wire=wire,
@@ -242,7 +286,14 @@ class WireScanSuite:
         scan_mode: str = "otf",
         rms_detector: str | None = None,
     ):
-        """Run a single wire in the requested scan mode."""
+        """Run a single wire in the requested scan mode.
+
+        Args:
+            wire: Wire name (e.g. "WS28144"). Must exist in WIRE_AREA_LOOKUP.
+            scan_mode: "otf" (on-the-fly) or "step". Default "otf".
+            rms_detector: Override detector for RMS calculation. If None,
+                uses the device's default detector.
+        """
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
         mode = scan_mode.lower()
@@ -261,7 +312,11 @@ class WireScanSuite:
         )
 
     def summary(self) -> None:
-        """Print the latest scan result for each wire."""
+        """Print the latest scan result for each wire.
+
+        Takes no arguments. Prints a formatted table of the most recent
+        result per configured wire, including sigma values where available.
+        """
         _SEP = "─" * 77
         print(f"\nWire Scan Suite  ·  beampath: {self.beampath}")
         print(_SEP)
