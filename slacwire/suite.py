@@ -265,6 +265,7 @@ class WireScanSuite:
         self,
         scan_mode: str = "otf",
         rms_detector: str | None = None,
+        multi_view: bool = True,
     ):
         """Run all configured wires in the requested scan mode.
 
@@ -272,13 +273,45 @@ class WireScanSuite:
             scan_mode: "otf" (on-the-fly) or "step". Default "otf".
             rms_detector: Override detector for RMS calculation. If None,
                 uses the device's default detector.
+            multi_view: If True, show a single combined 2x2 figure per wire
+                (trajectory + profiles) instead of individual plot windows.
         """
+        show_orig = self.show
+        if multi_view:
+            self.show = False
+
+        file_prefix = "OTF" if scan_mode.lower() == "otf" else "Step"
+
         for wire in self.wires:
             self.run_single(
                 wire=wire,
                 scan_mode=scan_mode,
                 rms_detector=rms_detector,
             )
+
+            if multi_view:
+                data = self.latest_run(wire)
+                device = self._get_device(wire)
+                meta = data.collection_result.metadata
+                detector = rms_detector or meta.rms_detector or meta.default_detector
+                if ":" in detector:
+                    detector = detector.split(":", 1)[0]
+                profiles = ()
+                if hasattr(data, "fit_result"):
+                    profiles = tuple(device.active_profiles())
+                self.view.render_multi(
+                    data,
+                    wire=wire,
+                    detector=detector,
+                    profiles=profiles,
+                    file_prefix=file_prefix,
+                    plotdir=self.plotdir,
+                    stamp=self._stamp(),
+                    show=show_orig,
+                    save=self.save_plots,
+                )
+
+        self.show = show_orig
 
     def run_single(
         self,

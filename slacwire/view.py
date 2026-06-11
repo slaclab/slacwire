@@ -98,6 +98,112 @@ class WireScanView:
         fig.tight_layout()
 
     # ------------------------------------------------------------------
+    # Multi-view: up to 4 subplots per figure (trajectory + profiles)
+    # ------------------------------------------------------------------
+
+    def render_multi(
+        self,
+        data,
+        wire: str,
+        detector: str,
+        profiles: tuple,
+        file_prefix: str,
+        plotdir: Path,
+        stamp: str,
+        show: bool = True,
+        save: bool = True,
+    ) -> Path | None:
+        """Render trajectory and profiles into a single 2x2 figure.
+
+        Layout: trajectory in top-left, then profiles (x, y, u) filling
+        top-right, bottom-left, bottom-right. Unused panels are hidden.
+
+        Returns:
+            Path to saved PNG, or None if save is False.
+        """
+        available_profiles = [p for p in profiles if p in data.profiles]
+        n_plots = 1 + len(available_profiles)
+        ncols = 2
+        nrows = 2 if n_plots > 2 else 1
+
+        fig, axes = plt.subplots(nrows, ncols, figsize=(14, 5 * nrows))
+        axes = np.atleast_2d(axes)
+
+        self._subplot_trajectory(axes[0, 0], data, wire, detector)
+
+        for i, profile in enumerate(available_profiles):
+            row, col = divmod(i + 1, ncols)
+            self._subplot_profile(axes[row, col], data, detector, profile)
+
+        for i in range(n_plots, nrows * ncols):
+            row, col = divmod(i, ncols)
+            axes[row, col].set_visible(False)
+
+        fig.suptitle(f"{wire} — {file_prefix} Scan ({detector})", fontsize=13)
+        fig.tight_layout()
+
+        path = None
+        if save:
+            path = self.save_fig(
+                fig, f"{file_prefix}_Multi_{wire}", plotdir, stamp
+            )
+        if show:
+            fig.show()
+        return path
+
+    def _subplot_trajectory(self, ax, data, wire: str, detector: str):
+        """Draw trajectory into an existing axes."""
+        traj = np.asarray(data.collection_result.raw_data[wire])
+        det = np.asarray(data.collection_result.raw_data[detector])
+        x = np.arange(len(traj))
+
+        units = "% Loss" if detector == "TMITLOSS" else "Counts"
+
+        ax.plot(x, traj, color="#1f77b4")
+        ax.set_xlabel("Scan Point")
+        ax.set_ylabel("Wire Position (µm)", color="#1f77b4")
+        ax.tick_params(axis="y", labelcolor="#1f77b4")
+
+        ax2 = ax.twinx()
+        ax2.plot(x, det, color="#d95f02")
+        ax2.set_ylabel(f"{detector} ({units})", color="#d95f02")
+        ax2.tick_params(axis="y", labelcolor="#d95f02")
+
+        ax.set_title(f"{wire} Trajectory")
+
+    def _subplot_profile(self, ax, data, detector: str, profile: str):
+        """Draw a profile fit into an existing axes."""
+        p = data.profiles[profile]
+        x_stage = np.asarray(p.positions)
+        y_meas = np.asarray(p.detectors[detector].values)
+
+        units = "% Loss" if detector == "TMITLOSS" else "Counts"
+        scale = 1 if profile == "u" else np.cos(np.deg2rad(45))
+
+        ax.plot(x_stage, y_meas, label="Measured", linestyle="dotted", color="blue")
+
+        fit = data.fit_result[profile].detectors[detector]
+        x_beam_fit = np.asarray(fit.positions)
+        y_fit = np.asarray(fit.curve)
+        ax.plot(x_beam_fit / scale, y_fit, label="Fitted", linestyle="-")
+
+        ax.set_xlabel("Wire Position (µm)")
+        ax.set_ylabel(f"{detector} ({units})")
+        ax.set_title(f"{profile.upper()} Profile")
+        ax.legend(loc="upper right", fontsize=8)
+
+        params_text = (
+            f"σ={fit.sigma:.1f}\n"
+            f"µ={fit.mean:.1f}\n"
+            f"A={fit.amplitude:.1f}"
+        )
+        ax.text(
+            0.95, 0.55, params_text,
+            transform=ax.transAxes, va="top", ha="right", fontsize=8,
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+
+    # ------------------------------------------------------------------
     # Standalone figure methods: create and return a new figure (for saving)
     # ------------------------------------------------------------------
 
