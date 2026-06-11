@@ -180,8 +180,8 @@ class WireScanSuite:
         self._run_device_scan(
             device=device,
             method=f"{mode}_collection",
-            scan_fn=lambda dev, rms_detector=None: self._measure(
-                dev, scan_mode=mode, collect_only=True
+            scan_fn=lambda dev, rms_detector=None: self._collect(
+                dev, scan_mode=mode
             ),
             rms_detector=None,
             file_prefix=f"{'OTF' if mode == 'otf' else 'Step'}Collect",
@@ -423,14 +423,24 @@ class WireScanSuite:
         wire_name, area = self._resolve_wire_and_area(wire)
         return create_wire(area, wire_name)
 
-    def _measure(self, device, scan_mode: str, collect_only: bool = False, rms_detector: str | None = None):
+    def _collect(self, device, scan_mode: str):
+        """Run collection only (no fitting/analysis)."""
+        from slac_measurements.wires.collection import create_wire_collection
+
+        collection = create_wire_collection(
+            scan_mode=scan_mode,
+            beam_profile_device=device,
+            beampath=self.beampath,
+        )
+        return collection.measure()
+
+    def _measure(self, device, scan_mode: str, rms_detector: str | None = None):
         """Create a measurement and execute it."""
         measurement = WireBeamProfileMeasurement(
             beam_profile_device=device, beampath=self.beampath
         )
         return measurement.measure(
             scan_mode=scan_mode,
-            collect_only=collect_only,
             rms_detector=rms_detector,
         )
 
