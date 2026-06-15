@@ -266,6 +266,7 @@ class WireScanSuite:
         scan_mode: str = "otf",
         rms_detector: str | None = None,
         multi_view: bool = True,
+        jitter_correction: bool = False,
     ):
         """Run all configured wires in the requested scan mode.
 
@@ -275,6 +276,8 @@ class WireScanSuite:
                 uses the device's default detector.
             multi_view: If True, show a single combined 2x2 figure per wire
                 (trajectory + profiles) instead of individual plot windows.
+            jitter_correction: If True, apply orbit-fit jitter correction
+                before analysis.
         """
         show_orig = self.show
         if multi_view:
@@ -287,6 +290,7 @@ class WireScanSuite:
                 wire=wire,
                 scan_mode=scan_mode,
                 rms_detector=rms_detector,
+                jitter_correction=jitter_correction,
             )
 
             if multi_view:
@@ -318,6 +322,7 @@ class WireScanSuite:
         wire: str,
         scan_mode: str = "otf",
         rms_detector: str | None = None,
+        jitter_correction: bool = False,
     ):
         """Run a single wire in the requested scan mode.
 
@@ -326,6 +331,8 @@ class WireScanSuite:
             scan_mode: "otf" (on-the-fly) or "step". Default "otf".
             rms_detector: Override detector for RMS calculation. If None,
                 uses the device's default detector.
+            jitter_correction: If True, apply orbit-fit jitter correction
+                before analysis.
         """
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
@@ -339,7 +346,9 @@ class WireScanSuite:
         self._run_device_scan(
             device=device,
             method=mode,
-            scan_fn=lambda dev, **kw: self._measure(dev, scan_mode=mode, **kw),
+            scan_fn=lambda dev, **kw: self._measure(
+                dev, scan_mode=mode, jitter_correction=jitter_correction, **kw
+            ),
             rms_detector=rms_detector,
             file_prefix="OTF" if mode == "otf" else "Step",
         )
@@ -434,7 +443,13 @@ class WireScanSuite:
         )
         return collection.measure()
 
-    def _measure(self, device, scan_mode: str, rms_detector: str | None = None):
+    def _measure(
+        self,
+        device,
+        scan_mode: str,
+        rms_detector: str | None = None,
+        jitter_correction: bool = False,
+    ):
         """Create a measurement and execute it."""
         measurement = WireBeamProfileMeasurement(
             beam_profile_device=device, beampath=self.beampath
@@ -442,6 +457,7 @@ class WireScanSuite:
         return measurement.measure(
             scan_mode=scan_mode,
             rms_detector=rms_detector,
+            jitter_correction=jitter_correction,
         )
 
     def _resolve_scope_data_path(
