@@ -213,6 +213,32 @@ class WireScanSuite:
 
         return result
 
+    def step_motion_test(self, wire: str, plot: bool = True):
+        """Run beam-less step-scan motion validation for a single wire.
+
+        Args:
+            wire: Wire name (e.g. "WS28144"). Must exist in WIRE_AREA_LOOKUP.
+            plot: If True, display trajectory plot of motor position vs scan
+                point. Also saves PNG if suite.save_plots is True.
+        """
+        from .step_motion_test import run_step_motion_test
+
+        wire_name, _ = self._resolve_wire_and_area(wire)
+        device = self._get_device(wire_name)
+        result = run_step_motion_test(device)
+
+        if plot:
+            self.view.render_motion_test(
+                result,
+                wire=wire_name,
+                plotdir=self.plotdir,
+                stamp=self._stamp(),
+                show=self.show,
+                save=self.save_plots,
+            )
+
+        return result
+
     def latest_run(self, wire: str):
         """Retrieve the most recent run result for a given wire.
 
