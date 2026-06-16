@@ -200,8 +200,10 @@ class WireScanSuite:
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
         result = run_motion_test(device)
+        logger.info("OTF motion test complete for %s.", wire_name)
 
         if plot:
+            logger.info("Rendering motion test plots for %s...", wire_name)
             self.view.render_motion_test(
                 result,
                 wire=wire_name,
@@ -210,6 +212,7 @@ class WireScanSuite:
                 show=self.show,
                 save=self.save_plots,
             )
+            logger.info("Plot rendering complete for %s.", wire_name)
 
         return result
 
@@ -226,8 +229,10 @@ class WireScanSuite:
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
         result = run_step_motion_test(device)
+        logger.info("Step motion test complete for %s.", wire_name)
 
         if plot:
+            logger.info("Rendering step motion test plots for %s...", wire_name)
             self.view.render_motion_test(
                 result,
                 wire=wire_name,
@@ -236,6 +241,7 @@ class WireScanSuite:
                 show=self.show,
                 save=self.save_plots,
             )
+            logger.info("Plot rendering complete for %s.", wire_name)
 
         return result
 

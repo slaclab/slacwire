@@ -45,7 +45,8 @@ def run_step_motion_test(
     _initialize_step_with_retry(device)
     positions = _get_step_positions(device)
     recorded = _step_through_positions(device, positions, timeout_s)
-    _retract(device)
+    retract_positions = _retract_and_record(device)
+    recorded.extend(retract_positions)
 
     metadata = MeasurementMetadata(
         wire_name=device.name,
@@ -123,13 +124,23 @@ def _step_through_positions(
             target, i + 1, total, speed,
         )
 
-        if not slac_measurements.utils.wait_until(
-            lambda t=target: abs(device.motor_rbv - t) < _WIRE_TOLERANCE_UM,
-            timeout=timeout_s,
-        ):
-            raise RuntimeError(
-                f"{device.name} did not reach position {target} within {timeout_s}s."
-            )
+        move_start = time.monotonic()
+        last_log_time = move_start
+        while True:
+            if abs(device.motor_rbv - target) < _WIRE_TOLERANCE_UM:
+                break
+            now = time.monotonic()
+            if now - move_start > timeout_s:
+                raise RuntimeError(
+                    f"{device.name} did not reach position {target} within {timeout_s}s."
+                )
+            if now - last_log_time >= 1.0:
+                logger.info(
+                    "%s position: %.1f um (target=%d, t=%.1fs)",
+                    device.name, device.motor_rbv, target, now - start,
+                )
+                last_log_time = now
+            time.sleep(0.05)
 
         rbv = device.motor_rbv
         recorded.append(rbv)
@@ -140,15 +151,55 @@ def _step_through_positions(
 
     elapsed = time.monotonic() - start
     logger.info(
-        "Step motion test complete: %d positions in %.1fs", total, elapsed,
+        "Step motion complete: %d positions in %.1fs", total, elapsed,
     )
     return recorded
 
 
-def _retract(device: Wire) -> None:
-    """Retract wire after step motion test."""
+_RETRACT_POLL_INTERVAL_S = 0.05
+_RETRACT_SETTLE_THRESHOLD_UM = 50
+_RETRACT_SETTLE_COUNT = 20
+
+
+def _retract_and_record(
+    device: Wire,
+    poll_interval_s: float = _RETRACT_POLL_INTERVAL_S,
+) -> list[float]:
+    """Retract wire and poll RBV during retraction until settled."""
     logger.info("Retracting %s...", device.name)
     time.sleep(_RETRACT_WAIT_S)
     device.retract()
-    time.sleep(_RETRACT_WAIT_S)
-    logger.info("Retracted. Motor RBV: %.1f", device.motor_rbv)
+
+    positions = []
+    settle_count = 0
+    start = time.monotonic()
+    last_log_time = start
+
+    while True:
+        pos = device.motor_rbv
+        positions.append(pos)
+
+        now = time.monotonic()
+        if now - last_log_time >= 1.0:
+            logger.info(
+                "%s retracting — position: %.1f um (t=%.1fs)",
+                device.name, pos, now - start,
+            )
+            last_log_time = now
+
+        if len(positions) > 1:
+            if abs(positions[-1] - positions[-2]) < _RETRACT_SETTLE_THRESHOLD_UM:
+                settle_count += 1
+            else:
+                settle_count = 0
+
+            if settle_count >= _RETRACT_SETTLE_COUNT:
+                break
+
+        time.sleep(poll_interval_s)
+
+    logger.info(
+        "Retraction complete. Final RBV: %.1f, %d samples captured.",
+        positions[-1], len(positions),
+    )
+    return positions

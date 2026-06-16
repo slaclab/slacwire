@@ -77,7 +77,7 @@ def _initialize_with_retry(device: Wire, max_attempts: int = 3) -> None:
         if slac_measurements.utils.wait_until(
             lambda: device.homed and device.on_status
         ):
-            logger.info("%s is homed and on.", device.name)
+            logger.info("%s initialized — homed and on.", device.name)
             return
 
         logger.warning("%s did not become homed and on - retrying...", device.name)
@@ -95,10 +95,19 @@ def _poll_motor_rbv(
     positions = []
     settle_count = 0
     start = time.monotonic()
+    last_log_time = start
 
     while True:
         pos = device.motor_rbv
         positions.append(pos)
+
+        now = time.monotonic()
+        if now - last_log_time >= 1.0:
+            logger.info(
+                "%s position: %.1f um (t=%.1fs)",
+                device.name, pos, now - start,
+            )
+            last_log_time = now
 
         if len(positions) > 1:
             if abs(positions[-1] - positions[-2]) < _SETTLE_THRESHOLD_UM:
