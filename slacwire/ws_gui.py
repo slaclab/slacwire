@@ -25,12 +25,14 @@ class WireScanSuiteThread(QThread):
         wire_identifier: str,
         beampath: str,
         detector: str,
+        jitter_correction: bool = False,
     ):
         super().__init__()
         self.suite = suite
         self.wire_identifier = wire_identifier
         self.beampath = beampath
         self.detector = detector
+        self.jitter_correction = jitter_correction
 
     def run(self):
         try:
@@ -48,6 +50,7 @@ class WireScanSuiteThread(QThread):
             self.suite.run_single(
                 wire=wire_name,
                 scan_mode="otf",            # Force OTF mode for testing! 4/14/26
+                jitter_correction=self.jitter_correction,
             )
 
             # Retrieve the latest run data and entry from registry
@@ -103,6 +106,9 @@ class WireScanSuiteGUI(Display):
         self.measurement.wireChanged.connect(self.update_plots)
         self.measurement.detectorChanged.connect(self._on_detector_changed)
         self.measurement.detectorChanged.connect(self.update_plots)
+        self.measurement.jitter_checkbox.stateChanged.connect(
+            self._on_jitter_toggled
+        )
         self.dataChanged.connect(self.update_plots)
         self.plots.profile_control.profileChanged.connect(
             self.update_profile_plot
@@ -189,6 +195,22 @@ class WireScanSuiteGUI(Display):
         if detector:
             self.suite.detector = detector
 
+    def _on_jitter_toggled(self, state: int):
+        wire = self.measurement.wire
+        data = self._latest_result_for_wire(wire)
+        if data is None or not hasattr(data, "reanalyze"):
+            return
+
+        jitter_on = state != 0
+        new_data = data.reanalyze(jitter_correction=jitter_on)
+
+        if wire in self.suite.results and self.suite.results[wire]:
+            self.suite.results[wire][-1] = new_data
+        elif wire in self.loaded_results:
+            self.loaded_results[wire] = new_data
+
+        self.dataChanged.emit()
+
     def update_parameters(self):
         children = self.ui.ParametersGroupBox.findChildren(QWidget)
         for child in children:
@@ -219,6 +241,7 @@ class WireScanSuiteGUI(Display):
             wire_identifier=wire_identifier,
             beampath=self.nav.beampath,
             detector=self.measurement.detector or self.suite.detector,
+            jitter_correction=self.measurement.jitter_enabled,
         )
         self.thread.scan_complete.connect(self.on_scan_complete)
         self.thread.scan_failed.connect(self.on_scan_failure)
