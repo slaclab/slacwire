@@ -397,6 +397,9 @@ class WireScanSuiteGUI(Display):
             str(image_path),
         )
 
+        logbook_label = "LCLS-II" if logbook == "lcls2" else "LCLS-I"
+        self.logger.info("Wire %s posted to %s logbook", profile, logbook_label)
+
     def update_trajectory_plot(self):
         wire = self.measurement.wire
         detector = self.measurement.detector
