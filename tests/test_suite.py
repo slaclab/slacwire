@@ -167,7 +167,7 @@ class TestWireScanSuite(unittest.TestCase):
             older.write_text("old", encoding="utf-8")
             newer.write_text("new", encoding="utf-8")
 
-            with patch("slacwire.suite._SCOPE_DATA_DIR", Path(tmp)):
+            with patch("slacwire.suite._base._SCOPE_DATA_DIR", Path(tmp)):
                 resolved = suite._resolve_scope_data_path(
                     wire=wire,
                     method="otf",

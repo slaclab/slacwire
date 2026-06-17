@@ -20,7 +20,7 @@ _SETTLE_COUNT = 20  # consecutive "stopped" readings to confirm done
 logger = logging.getLogger(__name__)
 
 
-def run_motion_test(
+def run_otf_motion_test(
     device: Wire,
     poll_interval_s: float = _POLL_INTERVAL_S,
 ) -> WireMeasurementCollectionResult:
@@ -95,19 +95,10 @@ def _poll_motor_rbv(
     positions = []
     settle_count = 0
     start = time.monotonic()
-    last_log_time = start
 
     while True:
         pos = device.motor_rbv
         positions.append(pos)
-
-        now = time.monotonic()
-        if now - last_log_time >= 1.0:
-            logger.info(
-                "%s position: %.1f um (t=%.1fs)",
-                device.name, pos, now - start,
-            )
-            last_log_time = now
 
         if len(positions) > 1:
             if abs(positions[-1] - positions[-2]) < _SETTLE_THRESHOLD_UM:
