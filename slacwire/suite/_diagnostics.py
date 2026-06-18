@@ -24,7 +24,11 @@ class DiagnosticsMixin:
 
         per_device: dict[str, int] = {}
         for wire_name in self.devices:
-            count = sum(1 for pvid in _PVcache_ if wire_name in pvid[0])
+            wire = self.devices[wire_name]
+            ctrl = wire.controls_information.control_name
+            count = sum(
+                1 for name in context_cache if ctrl in name
+            )
             per_device[wire_name] = count
 
         return {
@@ -48,21 +52,33 @@ class DiagnosticsMixin:
         all_names.extend(pvid[0] for pvid in _PVcache_ if pvid[0] not in context_cache)
 
         grouped: dict[str, list[str]] = {wire: [] for wire in self.devices}
+        grouped["EDEF"] = []
+        grouped["BSA"] = []
         grouped["_unmatched"] = []
 
+        ctrl_map = {
+            wire_name: self.devices[wire_name].controls_information.control_name
+            for wire_name in self.devices
+        }
+
         for name in all_names:
-            matched = False
-            for wire_name in self.devices:
-                if wire_name in name:
-                    grouped[wire_name].append(name)
-                    matched = True
-                    break
-            if not matched:
-                grouped["_unmatched"].append(name)
+            if "EDEF" in name:
+                grouped["EDEF"].append(name)
+            elif "BSA" in name:
+                grouped["BSA"].append(name)
+            else:
+                matched = False
+                for wire_name, ctrl in ctrl_map.items():
+                    if ctrl in name:
+                        grouped[wire_name].append(name)
+                        matched = True
+                        break
+                if not matched:
+                    grouped["_unmatched"].append(name)
 
         return {k: sorted(v) for k, v in grouped.items()}
 
-    def cache_summary(self) -> str:
+    def cache_summary(self) -> None:
         """Print and return a formatted summary of CA cache state."""
         info = self.cache_info()
 
@@ -78,4 +94,3 @@ class DiagnosticsMixin:
 
         summary = "\n".join(lines)
         print(summary)
-        return summary
