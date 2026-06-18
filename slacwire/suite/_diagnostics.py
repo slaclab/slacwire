@@ -30,6 +30,8 @@ class DiagnosticsMixin:
                 1 for name in context_cache if ctrl in name
             )
             per_device[wire_name] = count
+        per_device["EDEF"] = sum(1 for name in context_cache if "EDEF" in name)
+        per_device["BSA"] = sum(1 for name in context_cache if "BSA" in name)
 
         return {
             "context": ctx,
