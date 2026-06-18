@@ -3,7 +3,8 @@
 This sub-package composes WireScanSuite from separate concern modules:
 - _base: dataclass fields and infrastructure
 - _motion: beam-less motion validation
-- _run: measurement execution and data collection
+- _collect: raw data collection (no analysis)
+- _run: measurement execution (collection + analysis)
 - _results: result queries and display
 """
 
@@ -12,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ._base import WireScanSuiteBase
+from ._collect import CollectMixin
 from ._constants import (
     WIRE_AREA_LOOKUP,
     Beampath,
@@ -19,13 +21,14 @@ from ._constants import (
     _SCOPE_DATA_DIR,
     dated_output_dir,
 )
+from ._diagnostics import DiagnosticsMixin
 from ._motion import MotionTestMixin
 from ._results import ResultsMixin
 from ._run import RunMixin
 
 
 @dataclass
-class WireScanSuite(MotionTestMixin, RunMixin, ResultsMixin, WireScanSuiteBase):
+class WireScanSuite(DiagnosticsMixin, MotionTestMixin, CollectMixin, RunMixin, ResultsMixin, WireScanSuiteBase):
     """High-level orchestration layer for wire scanner beam profile measurements.
 
     Transforms low-level EPICS device controls (wire positioning, data collection,
