@@ -1,4 +1,6 @@
 from __future__ import annotations
+import epics.ca
+from epics.pv import _PVcache_
 
 import logging
 
@@ -17,9 +19,6 @@ class DiagnosticsMixin:
             channel_cache_total: Total entries in the context's channel cache
             per_device: Dict mapping wire name -> count of matching PV cache entries
         """
-        import epics.ca
-        from epics.pv import _PVcache_
-
         ctx = epics.ca.current_context()
         context_cache = epics.ca._cache.get(ctx, {}) if ctx is not None else {}
 
@@ -42,10 +41,11 @@ class DiagnosticsMixin:
         An additional key "_unmatched" contains PVs that don't match any
         configured wire device.
         """
-        import epics.ca
-        from epics.pv import _PVcache_
+        ctx = epics.ca.current_context()
+        context_cache = epics.ca._cache.get(ctx, {}) if ctx is not None else {}
 
-        all_names = [pvid[0] for pvid in _PVcache_]
+        all_names = list(context_cache.keys())
+        all_names.extend(pvid[0] for pvid in _PVcache_ if pvid[0] not in context_cache)
 
         grouped: dict[str, list[str]] = {wire: [] for wire in self.devices}
         grouped["_unmatched"] = []
@@ -63,7 +63,7 @@ class DiagnosticsMixin:
         return {k: sorted(v) for k, v in grouped.items()}
 
     def cache_summary(self) -> str:
-        """Log and return a formatted summary of CA cache state."""
+        """Print and return a formatted summary of CA cache state."""
         info = self.cache_info()
 
         lines = [
@@ -77,5 +77,5 @@ class DiagnosticsMixin:
             lines.append(f"    {wire:12s}  {count}")
 
         summary = "\n".join(lines)
-        logger.info(summary)
+        print(summary)
         return summary
