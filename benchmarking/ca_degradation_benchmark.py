@@ -51,6 +51,8 @@ CSV_COLUMNS = [
     "pv_cache_total",
     "channel_cache_total",
     "disconnected_channels",
+    "monitor_callbacks",
+    "pend_event_ms",
     "pend_io_ms",
     "open_fd_count",
     "scan_success",
@@ -72,6 +74,8 @@ class IterationMetrics:
     pv_cache_total: int
     channel_cache_total: int
     disconnected_channels: int
+    monitor_callbacks: int
+    pend_event_ms: float
     pend_io_ms: float
     open_fd_count: int
     scan_success: bool
@@ -157,11 +161,49 @@ def count_disconnected_channels() -> int:
     )
 
 
+def measure_pend_event(timeout: float = 0.001) -> float:
+    """Time a ca_pend_event call (ms). Processes pending monitor callbacks."""
+    t0 = time.perf_counter()
+    epics.ca.pend_event(timeout)
+    return (time.perf_counter() - t0) * 1000
+
+
 def measure_pend_io(timeout: float = 2.0) -> float:
     """Time a ca_pend_io call (ms). Measures how long the CA event queue takes to flush."""
     t0 = time.perf_counter()
     epics.ca.pend_io(timeout=timeout)
     return (time.perf_counter() - t0) * 1000
+
+
+# Monitor callback counter.
+# Since _onMonitorEvent is bound into a ctypes callback at module load,
+# we can't simply replace it. Instead we count by scanning PV cache timestamps.
+_last_callback_timestamps: dict[str, float] = {}
+
+
+def _install_monitor_counter():
+    """Snapshot initial PV timestamps for change detection."""
+    _last_callback_timestamps.clear()
+    for pvid in list(_PVcache_):
+        pv_obj = _PVcache_.get(pvid)
+        if pv_obj is not None:
+            ts = getattr(pv_obj, "timestamp", None)
+            _last_callback_timestamps[pvid[0]] = ts
+
+
+def _reset_monitor_count() -> int:
+    """Count PVs whose timestamp changed since last reset (proxy for monitor callbacks)."""
+    count = 0
+    for pvid in list(_PVcache_):
+        pv_obj = _PVcache_.get(pvid)
+        if pv_obj is None:
+            continue
+        ts = getattr(pv_obj, "timestamp", None)
+        prev = _last_callback_timestamps.get(pvid[0])
+        if ts != prev:
+            count += 1
+            _last_callback_timestamps[pvid[0]] = ts
+    return count
 
 
 def _cancel_hst_monitors() -> int:
@@ -266,7 +308,10 @@ def run_benchmark(
         f"{'━' * 70}"
     )
 
+    _install_monitor_counter()
+
     # Baseline measurement
+    _reset_monitor_count()
     baseline_latency = measure_caget_latency(canary_pv, latency_samples)
     baseline_connect = measure_fresh_connect(canary_pv)
     baseline_cache = suite.cache_info()
@@ -302,7 +347,9 @@ def run_benchmark(
                 logger.warning(f"Scan {i + 1} ({wire}) failed: {e}")
 
             # Post-scan measurements
+            callbacks = _reset_monitor_count()
             disconnected = count_disconnected_channels()
+            pend_event_ms = measure_pend_event()
             pend_io_ms = measure_pend_io()
             connect_ms = measure_fresh_connect(canary_pv)
             latency = measure_caget_latency(canary_pv, latency_samples)
@@ -343,6 +390,8 @@ def run_benchmark(
                 pv_cache_total=cache["pv_cache_total"],
                 channel_cache_total=cache["channel_cache_total"],
                 disconnected_channels=disconnected,
+                monitor_callbacks=callbacks,
+                pend_event_ms=pend_event_ms,
                 pend_io_ms=pend_io_ms,
                 open_fd_count=fd_count,
                 scan_success=scan_success,
@@ -357,8 +406,8 @@ def run_benchmark(
             print(
                 f"[{i + 1}/{iterations}] {wire:10s} {status}  "
                 f"cache={cache['pv_cache_total']}/{cache['channel_cache_total']}  "
-                f"disconnected={disconnected}  "
-                f"pend_io={pend_io_ms:.1f}ms  "
+                f"callbacks={callbacks}  "
+                f"pend_event={pend_event_ms:.1f}ms  pend_io={pend_io_ms:.1f}ms  "
                 f"connect={connect_ms:.1f}ms  "
                 f"caget_p50={latency['p50']:.2f}ms  "
                 f"fds={fd_count}\n"
@@ -371,8 +420,8 @@ def run_benchmark(
 
 def print_summary_table(results: list[IterationMetrics]) -> None:
     """Print a formatted summary table."""
-    headers = ["iter", "wire", "pv_cache", "ch_cache", "disconn", "pend_io", "connect_ms", "p50_ms", "p95_ms", "fds", "ok"]
-    widths = [4, 10, 8, 8, 7, 8, 10, 7, 7, 5, 4]
+    headers = ["iter", "wire", "pv_cache", "ch_cache", "cbacks", "pend_ev", "pend_io", "connect_ms", "p50_ms", "p95_ms", "fds", "ok"]
+    widths = [4, 10, 8, 8, 6, 7, 7, 10, 7, 7, 5, 4]
 
     header_line = "  ".join(h.ljust(w) for h, w in zip(headers, widths))
     print(header_line)
@@ -385,7 +434,8 @@ def print_summary_table(results: list[IterationMetrics]) -> None:
             r.wire_scanned,
             str(r.pv_cache_total),
             str(r.channel_cache_total),
-            str(r.disconnected_channels),
+            str(r.monitor_callbacks),
+            f"{r.pend_event_ms:.1f}",
             f"{r.pend_io_ms:.1f}",
             f"{r.connect_time_ms:.1f}",
             f"{r.caget_p50_ms:.2f}",
