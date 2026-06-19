@@ -28,6 +28,8 @@ import epics.ca
 import numpy as np
 from epics.pv import _PVcache_
 
+from unittest.mock import patch
+
 from slacwire.suite import WireScanSuite
 
 logger = logging.getLogger(__name__)
@@ -221,55 +223,64 @@ def run_benchmark(
 
     results: list[IterationMetrics] = []
 
-    for i in range(iterations):
-        wire = wires[i % len(wires)]
+    # Disable _clear_ca_cache on buffer release so PVs accumulate across scans.
+    # With --clear-cache we let the normal clearing run (A/B comparison).
+    cache_patch = (
+        patch("slac_timing.buffer.Buffer._clear_ca_cache", lambda _self: None)
+        if not clear_cache
+        else patch("slac_timing.buffer.Buffer._clear_ca_cache")
+    )
 
-        scan_success = True
-        scan_error = None
-        try:
-            suite.collect_single(wire, scan_mode=scan_mode)
-        except Exception as e:
-            scan_success = False
-            scan_error = str(e)
-            logger.warning(f"Scan {i + 1} ({wire}) failed: {e}")
+    with cache_patch:
+        for i in range(iterations):
+            wire = wires[i % len(wires)]
 
-        # Post-scan measurements
-        connect_ms = measure_fresh_connect(canary_pv)
-        latency = measure_caget_latency(canary_pv, latency_samples)
-        cache = suite.cache_info()
-        fd_count = count_open_fds()
+            scan_success = True
+            scan_error = None
+            try:
+                suite.collect_single(wire, scan_mode=scan_mode)
+            except Exception as e:
+                scan_success = False
+                scan_error = str(e)
+                logger.warning(f"Scan {i + 1} ({wire}) failed: {e}")
 
-        cleared = False
-        if clear_cache:
-            clear_ca_cache_all()
-            cleared = True
+            # Post-scan measurements
+            connect_ms = measure_fresh_connect(canary_pv)
+            latency = measure_caget_latency(canary_pv, latency_samples)
+            cache = suite.cache_info()
+            fd_count = count_open_fds()
 
-        metrics = IterationMetrics(
-            iteration=i + 1,
-            wire_scanned=wire,
-            timestamp=datetime.now().isoformat(),
-            connect_time_ms=connect_ms,
-            caget_mean_ms=latency["mean"],
-            caget_p50_ms=latency["p50"],
-            caget_p95_ms=latency["p95"],
-            caget_p99_ms=latency["p99"],
-            pv_cache_total=cache["pv_cache_total"],
-            channel_cache_total=cache["channel_cache_total"],
-            open_fd_count=fd_count,
-            scan_success=scan_success,
-            scan_error=scan_error,
-            cache_cleared=cleared,
-        )
-        results.append(metrics)
+            cleared = False
+            if clear_cache:
+                clear_ca_cache_all()
+                cleared = True
 
-        status = "OK" if scan_success else "FAIL"
-        print(
-            f"[{i + 1}/{iterations}] {wire:10s} {status}  "
-            f"cache={cache['pv_cache_total']}/{cache['channel_cache_total']}  "
-            f"connect={connect_ms:.1f}ms  "
-            f"caget_p50={latency['p50']:.2f}ms  "
-            f"fds={fd_count}"
-        )
+            metrics = IterationMetrics(
+                iteration=i + 1,
+                wire_scanned=wire,
+                timestamp=datetime.now().isoformat(),
+                connect_time_ms=connect_ms,
+                caget_mean_ms=latency["mean"],
+                caget_p50_ms=latency["p50"],
+                caget_p95_ms=latency["p95"],
+                caget_p99_ms=latency["p99"],
+                pv_cache_total=cache["pv_cache_total"],
+                channel_cache_total=cache["channel_cache_total"],
+                open_fd_count=fd_count,
+                scan_success=scan_success,
+                scan_error=scan_error,
+                cache_cleared=cleared,
+            )
+            results.append(metrics)
+
+            status = "OK" if scan_success else "FAIL"
+            print(
+                f"[{i + 1}/{iterations}] {wire:10s} {status}  "
+                f"cache={cache['pv_cache_total']}/{cache['channel_cache_total']}  "
+                f"connect={connect_ms:.1f}ms  "
+                f"caget_p50={latency['p50']:.2f}ms  "
+                f"fds={fd_count}"
+            )
 
     print(f"{'━' * 70}")
     return results
