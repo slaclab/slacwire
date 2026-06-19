@@ -51,6 +51,7 @@ CSV_COLUMNS = [
     "pv_cache_total",
     "channel_cache_total",
     "disconnected_channels",
+    "pend_io_ms",
     "open_fd_count",
     "scan_success",
     "scan_error",
@@ -71,6 +72,7 @@ class IterationMetrics:
     pv_cache_total: int
     channel_cache_total: int
     disconnected_channels: int
+    pend_io_ms: float
     open_fd_count: int
     scan_success: bool
     scan_error: str | None
@@ -153,6 +155,13 @@ def count_disconnected_channels() -> int:
         1 for entry in cache.values()
         if getattr(entry, "chid", None) and not epics.ca.isConnected(entry.chid)
     )
+
+
+def measure_pend_io(timeout: float = 2.0) -> float:
+    """Time a ca_pend_io call (ms). Measures how long the CA event queue takes to flush."""
+    t0 = time.perf_counter()
+    epics.ca.pend_io(timeout=timeout)
+    return (time.perf_counter() - t0) * 1000
 
 
 def count_open_fds() -> int:
@@ -260,6 +269,7 @@ def run_benchmark(
 
             # Post-scan measurements
             disconnected = count_disconnected_channels()
+            pend_io_ms = measure_pend_io()
             connect_ms = measure_fresh_connect(canary_pv)
             latency = measure_caget_latency(canary_pv, latency_samples)
             cache = suite.cache_info()
@@ -282,6 +292,7 @@ def run_benchmark(
                 pv_cache_total=cache["pv_cache_total"],
                 channel_cache_total=cache["channel_cache_total"],
                 disconnected_channels=disconnected,
+                pend_io_ms=pend_io_ms,
                 open_fd_count=fd_count,
                 scan_success=scan_success,
                 scan_error=scan_error,
@@ -294,6 +305,7 @@ def run_benchmark(
                 f"[{i + 1}/{iterations}] {wire:10s} {status}  "
                 f"cache={cache['pv_cache_total']}/{cache['channel_cache_total']}  "
                 f"disconnected={disconnected}  "
+                f"pend_io={pend_io_ms:.1f}ms  "
                 f"connect={connect_ms:.1f}ms  "
                 f"caget_p50={latency['p50']:.2f}ms  "
                 f"fds={fd_count}"
@@ -305,8 +317,8 @@ def run_benchmark(
 
 def print_summary_table(results: list[IterationMetrics]) -> None:
     """Print a formatted summary table."""
-    headers = ["iter", "wire", "pv_cache", "ch_cache", "disconn", "connect_ms", "p50_ms", "p95_ms", "fds", "ok"]
-    widths = [4, 10, 8, 8, 7, 10, 7, 7, 5, 4]
+    headers = ["iter", "wire", "pv_cache", "ch_cache", "disconn", "pend_io", "connect_ms", "p50_ms", "p95_ms", "fds", "ok"]
+    widths = [4, 10, 8, 8, 7, 8, 10, 7, 7, 5, 4]
 
     header_line = "  ".join(h.ljust(w) for h, w in zip(headers, widths))
     print(header_line)
@@ -320,6 +332,7 @@ def print_summary_table(results: list[IterationMetrics]) -> None:
             str(r.pv_cache_total),
             str(r.channel_cache_total),
             str(r.disconnected_channels),
+            f"{r.pend_io_ms:.1f}",
             f"{r.connect_time_ms:.1f}",
             f"{r.caget_p50_ms:.2f}",
             f"{r.caget_p95_ms:.2f}",
