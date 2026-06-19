@@ -182,6 +182,22 @@ def _cancel_hst_monitors() -> int:
     return count
 
 
+def _get_cached_hst_buffers() -> dict[str, int]:
+    """Return a count of cached HST PVs grouped by buffer number.
+
+    E.g. {"2": 45, "10": 38} means 45 PVs ending in HST2, 38 in HST10.
+    """
+    import re
+    pattern = re.compile(r"HST(\d+)$")
+    counts: dict[str, int] = {}
+    for pvid in list(_PVcache_):
+        m = pattern.search(pvid[0])
+        if m:
+            buf_num = m.group(1)
+            counts[buf_num] = counts.get(buf_num, 0) + 1
+    return counts
+
+
 def count_open_fds() -> int:
     """Count open file descriptors for the current process."""
     if platform.system() == "Darwin":
@@ -336,6 +352,8 @@ def run_benchmark(
             results.append(metrics)
 
             status = "OK" if scan_success else "FAIL"
+            hst_buffers = _get_cached_hst_buffers()
+            buf_str = " ".join(f"HST{k}:{v}" for k, v in sorted(hst_buffers.items()))
             print(
                 f"[{i + 1}/{iterations}] {wire:10s} {status}  "
                 f"cache={cache['pv_cache_total']}/{cache['channel_cache_total']}  "
@@ -343,7 +361,8 @@ def run_benchmark(
                 f"pend_io={pend_io_ms:.1f}ms  "
                 f"connect={connect_ms:.1f}ms  "
                 f"caget_p50={latency['p50']:.2f}ms  "
-                f"fds={fd_count}"
+                f"fds={fd_count}\n"
+                f"           buffers: {buf_str}"
             )
 
     print(f"{'━' * 70}")
