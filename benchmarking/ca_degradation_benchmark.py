@@ -164,6 +164,24 @@ def measure_pend_io(timeout: float = 2.0) -> float:
     return (time.perf_counter() - t0) * 1000
 
 
+def _cancel_hst_monitors() -> int:
+    """Cancel auto_monitor subscriptions on all HST PVs in the cache.
+
+    Returns the number of monitors cancelled. Channels stay connected —
+    only the subscription data flow stops.
+    """
+    count = 0
+    for pvid in list(_PVcache_):
+        if "HST" not in pvid[0]:
+            continue
+        pv_obj = _PVcache_.get(pvid)
+        if pv_obj is not None and getattr(pv_obj, "auto_monitor", False):
+            pv_obj.clear_auto_monitor()
+            pv_obj.auto_monitor = False
+            count += 1
+    return count
+
+
 def count_open_fds() -> int:
     """Count open file descriptors for the current process."""
     if platform.system() == "Darwin":
@@ -274,6 +292,23 @@ def run_benchmark(
             latency = measure_caget_latency(canary_pv, latency_samples)
             cache = suite.cache_info()
             fd_count = count_open_fds()
+
+            # If latency cliff detected, cancel HST monitors and re-measure
+            # to confirm socket monitor flooding hypothesis.
+            if latency["p50"] > 100:
+                hst_count = _cancel_hst_monitors()
+                print(
+                    f"  *** CLIFF DETECTED (p50={latency['p50']:.0f}ms) "
+                    f"— cancelled {hst_count} HST monitors, re-measuring..."
+                )
+                pend_io_after = measure_pend_io()
+                connect_after = measure_fresh_connect(canary_pv)
+                latency_after = measure_caget_latency(canary_pv, latency_samples)
+                print(
+                    f"  *** AFTER: pend_io={pend_io_after:.1f}ms  "
+                    f"connect={connect_after:.1f}ms  "
+                    f"caget_p50={latency_after['p50']:.2f}ms"
+                )
 
             cleared = False
             if clear_cache:
