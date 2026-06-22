@@ -287,6 +287,7 @@ def run_benchmark(
     beampath: str,
     clear_cache: bool,
     latency_samples: int,
+    no_patch: bool = False,
 ) -> list[IterationMetrics]:
     """Run the degradation benchmark.
 
@@ -325,13 +326,13 @@ def run_benchmark(
 
     results: list[IterationMetrics] = []
 
-    # Disable _clear_ca_cache on buffer release so PVs accumulate across scans.
-    # With --clear-cache we let the normal clearing run (A/B comparison).
-    cache_patch = (
-        patch("slac_timing.buffer.Buffer._clear_ca_cache", lambda _self: None)
-        if not clear_cache
-        else patch("slac_timing.buffer.Buffer._clear_ca_cache")
-    )
+    if no_patch:
+        from contextlib import nullcontext
+        cache_patch = nullcontext()
+    elif not clear_cache:
+        cache_patch = patch("slac_timing.buffer.Buffer._clear_ca_cache", lambda _self: None)
+    else:
+        cache_patch = patch("slac_timing.buffer.Buffer._clear_ca_cache")
 
     with cache_patch:
         for i in range(iterations):
@@ -545,6 +546,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Clear CA cache after each scan (for A/B comparison)",
     )
     parser.add_argument(
+        "--no-patch",
+        action="store_true",
+        help="Run without patching _clear_ca_cache (test the real buffer module)",
+    )
+    parser.add_argument(
         "--plot",
         action="store_true",
         help="Generate matplotlib degradation plot",
@@ -576,6 +582,7 @@ def main(argv: list[str] | None = None) -> None:
         beampath=args.beampath,
         clear_cache=args.clear_cache,
         latency_samples=args.latency_samples,
+        no_patch=args.no_patch,
     )
 
     print_summary_table(results)
