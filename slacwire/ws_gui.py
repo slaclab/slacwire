@@ -1,12 +1,13 @@
 import importlib
 import logging
+import traceback
 from datetime import datetime
 from pathlib import Path
 
 import yaml
 from pydm import Display
 from PyQt5.QtCore import QThread, pyqtSignal
-from qtpy.QtWidgets import QFileDialog, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QWidget
 
 from slacwire.widgets.measurement import MeasurementWidget, extract_measurement_data
 from slacwire.widgets.navigation import NavigationWidget
@@ -17,7 +18,7 @@ from slacwire.suite import WireScanSuite
 
 class WireScanSuiteThread(QThread):
     scan_complete = pyqtSignal(str, str, object, dict)
-    scan_failed = pyqtSignal(str, str)
+    scan_failed = pyqtSignal(str, str, str)
 
     def __init__(
         self,
@@ -60,7 +61,8 @@ class WireScanSuiteThread(QThread):
                 # No results were produced
                 self.scan_failed.emit(
                     self.wire_identifier,
-                    f"No data returned from scan for {wire_name}"
+                    f"No data returned from scan for {wire_name}",
+                    "",
                 )
                 return
 
@@ -77,7 +79,8 @@ class WireScanSuiteThread(QThread):
             method = entry.get("method", "unknown")
             self.scan_complete.emit(wire_name, method, data, entry)
         except Exception as exc:
-            self.scan_failed.emit(self.wire_identifier, str(exc))
+            tb = traceback.format_exc()
+            self.scan_failed.emit(self.wire_identifier, str(exc), tb)
 
 
 class WireScanSuiteGUI(Display):
@@ -262,8 +265,8 @@ class WireScanSuiteGUI(Display):
         )
         self.dataChanged.emit()
 
-    def on_scan_failure(self, wire_identifier: str, message: str):
-        self.ui.startButton.setEnabled(True)
+    def on_scan_failure(self, wire_identifier: str, message: str, tb: str):
+        self.ui.startButton.setEnabled(False)
         wire_name = wire_identifier.split(":")[0]
         self.suite.registry.log(
             method="unknown",
@@ -277,6 +280,17 @@ class WireScanSuiteGUI(Display):
             wire_identifier,
             message,
         )
+
+        dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Critical)
+        dialog.setWindowTitle("Scan Failed")
+        dialog.setText(f"Scan failed for {wire_identifier}")
+        dialog.setInformativeText(message)
+        if tb:
+            dialog.setDetailedText(tb)
+        dialog.setStandardButtons(QMessageBox.Ok)
+        dialog.exec_()
+        self.ui.startButton.setEnabled(True)
 
     def _latest_result_for_wire(self, wire_name: str):
         # Check if we have results for this wire in the suite
