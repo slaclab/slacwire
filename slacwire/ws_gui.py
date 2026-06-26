@@ -215,6 +215,9 @@ class WireScanSuiteGUI(Display):
         self.dataChanged.emit()
 
     def update_parameters(self):
+        if self.measurement.active_wire is None:
+            return
+
         children = self.ui.ParametersGroupBox.findChildren(QWidget)
         for child in children:
             name = child.objectName()

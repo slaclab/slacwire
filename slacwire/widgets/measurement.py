@@ -79,6 +79,10 @@ class MeasurementWidget(QGroupBox):
         self.detector_combo.blockSignals(True)
         self.detector_combo.clear()
 
+        if self.my_wire is None:
+            self.detector_combo.blockSignals(False)
+            return
+
         detectors = getattr(self.my_wire.metadata, "detectors", [])
         for detector_string in detectors:
             detector, area = detector_string.split(":")
@@ -89,6 +93,10 @@ class MeasurementWidget(QGroupBox):
     def update_bpms(self):
         self.bpm_list.blockSignals(True)
         self.bpm_list.clear()
+
+        if self.my_wire is None:
+            self.bpm_list.blockSignals(False)
+            return
 
         jitter_bpms = getattr(self.my_wire.metadata, "jitter_bpms", None)
         if jitter_bpms:
