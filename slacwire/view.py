@@ -429,50 +429,55 @@ class WireScanView:
         jitter_rms: tuple[float, float] | None,
         plotdir: Path,
         stamp: str,
-        fit_x: np.ndarray | None = None,
-        fit_curve: np.ndarray | None = None,
-        fit_sigma: float | None = None,
+        fit_x_uncorrected: np.ndarray | None = None,
+        fit_curve_uncorrected: np.ndarray | None = None,
+        fit_sigma_uncorrected: float | None = None,
+        fit_x_corrected: np.ndarray | None = None,
+        fit_curve_corrected: np.ndarray | None = None,
+        fit_sigma_corrected: float | None = None,
         show: bool = True,
         save: bool = True,
     ) -> Path | None:
-        """Side-by-side Y profiles: uncorrected (left) and jitter-corrected (right).
-
-        Args:
-            x_uncorrected: Beam-coordinate positions without jitter correction.
-            x_corrected: Beam-coordinate positions with jitter correction.
-            detector_values: Detector signal values (same for both).
-            wire: Wire name for titles and filenames.
-            detector: Detector name for axis labels.
-            jitter_rms: (x_rms, y_rms) in µm, or None.
-            plotdir: Directory to write PNG file into.
-            stamp: Timestamp string appended to filename.
-            fit_x: X values for Gaussian fit curve, or None.
-            fit_curve: Y values for Gaussian fit curve, or None.
-            fit_sigma: Fitted beam size (sigma) in µm, or None.
-            show: If True, display the figure interactively.
-            save: If True, save figure to plotdir.
-
-        Returns:
-            Path to saved PNG, or None if save is False.
-        """
+        """Side-by-side Y profiles: uncorrected (left) and jitter-corrected (right)."""
         units = "% Loss" if detector == "TMITLOSS" else "Counts"
 
         fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
 
-        ax_left.plot(x_uncorrected, detector_values, color="#d62728")
+        # --- Uncorrected (left) ---
+        sort_idx_unc = np.argsort(x_uncorrected)
+        x_unc_sorted = x_uncorrected[sort_idx_unc]
+        det_unc_sorted = detector_values[sort_idx_unc]
+
+        if fit_x_uncorrected is not None:
+            fit_min, fit_max = fit_x_uncorrected.min(), fit_x_uncorrected.max()
+            in_fit = (x_unc_sorted >= fit_min) & (x_unc_sorted <= fit_max)
+            yerr = np.where(in_fit, np.sqrt(np.abs(det_unc_sorted)), 0)
+            ax_left.errorbar(
+                x_unc_sorted, det_unc_sorted, yerr=yerr,
+                fmt="o", markersize=3, color="#d62728",
+                ecolor="#d62728", elinewidth=0.8, capsize=2,
+                label="Data",
+            )
+        else:
+            ax_left.plot(x_unc_sorted, det_unc_sorted, color="#d62728", label="Data")
+
+        if fit_x_uncorrected is not None and fit_curve_uncorrected is not None:
+            sigma_label = f"Fit (σ = {fit_sigma_uncorrected:.1f} µm)" if fit_sigma_uncorrected else "Fit"
+            ax_left.plot(fit_x_uncorrected, fit_curve_uncorrected, color="#ff7f0e", linewidth=2, label=sigma_label)
+
         ax_left.set_xlabel("Beam Position (µm)")
         ax_left.set_ylabel(f"{detector} ({units})")
         ax_left.set_title("Uncorrected")
         ax_left.grid(True, which="both", linestyle="--", alpha=0.6)
+        ax_left.legend(loc="upper right")
 
-        # Sort corrected data for plotting
+        # --- Corrected (right) ---
         sort_idx = np.argsort(x_corrected)
         x_corr_sorted = x_corrected[sort_idx]
         det_sorted = detector_values[sort_idx]
 
-        # Error bars (sqrt of counts) for points in the fit region
-        if fit_x is not None:
-            fit_min, fit_max = fit_x.min(), fit_x.max()
+        if fit_x_corrected is not None:
+            fit_min, fit_max = fit_x_corrected.min(), fit_x_corrected.max()
             in_fit = (x_corr_sorted >= fit_min) & (x_corr_sorted <= fit_max)
             yerr = np.where(in_fit, np.sqrt(np.abs(det_sorted)), 0)
             ax_right.errorbar(
@@ -484,10 +489,9 @@ class WireScanView:
         else:
             ax_right.plot(x_corr_sorted, det_sorted, color="#1f77b4", label="Data")
 
-        # Overlay Gaussian fit
-        if fit_x is not None and fit_curve is not None:
-            sigma_label = f"Fit (σ = {fit_sigma:.1f} µm)" if fit_sigma else "Fit"
-            ax_right.plot(fit_x, fit_curve, color="#ff7f0e", linewidth=2, label=sigma_label)
+        if fit_x_corrected is not None and fit_curve_corrected is not None:
+            sigma_label = f"Fit (σ = {fit_sigma_corrected:.1f} µm)" if fit_sigma_corrected else "Fit"
+            ax_right.plot(fit_x_corrected, fit_curve_corrected, color="#ff7f0e", linewidth=2, label=sigma_label)
 
         ax_right.set_xlabel("Beam Position (µm)")
         ax_right.set_title("Jitter-corrected")

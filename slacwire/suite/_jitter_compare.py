@@ -72,9 +72,24 @@ class JitterCompareMixin:
 
             jitter_rms = (float(np.std(jitter_x)), float(np.std(jitter_y)))
 
-            # Fit corrected profile
             from slac_measurements.fitting import gaussian
 
+            # Fit uncorrected profile
+            sort_idx_unc = np.argsort(x_beam_uncorrected)
+            x_sorted_unc = x_beam_uncorrected[sort_idx_unc]
+            y_sorted_unc = detector_values[sort_idx_unc]
+
+            try:
+                fp_unc = gaussian.fit(pos=x_sorted_unc, data=y_sorted_unc)
+                fit_x_unc = np.linspace(x_sorted_unc.min(), x_sorted_unc.max(), 200)
+                fit_curve_unc = gaussian.curve(x=fit_x_unc, **{k: v for k, v in fp_unc.items() if k != "error"})
+                fit_sigma_unc = fp_unc["sigma"]
+            except Exception:
+                fit_x_unc = None
+                fit_curve_unc = None
+                fit_sigma_unc = None
+
+            # Fit corrected profile
             sort_idx = np.argsort(x_beam_corrected)
             x_sorted = x_beam_corrected[sort_idx]
             y_sorted = detector_values[sort_idx]
@@ -99,9 +114,12 @@ class JitterCompareMixin:
                 wire=wire,
                 detector=det,
                 jitter_rms=jitter_rms,
-                fit_x=fit_x,
-                fit_curve=fit_curve,
-                fit_sigma=fit_sigma,
+                fit_x_uncorrected=fit_x_unc,
+                fit_curve_uncorrected=fit_curve_unc,
+                fit_sigma_uncorrected=fit_sigma_unc,
+                fit_x_corrected=fit_x,
+                fit_curve_corrected=fit_curve,
+                fit_sigma_corrected=fit_sigma,
                 plotdir=plotdir,
                 stamp=stamp,
                 show=self.show,
