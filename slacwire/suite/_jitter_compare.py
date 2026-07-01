@@ -18,7 +18,7 @@ class JitterCompareMixin:
         limit: int | None = 10,
         detector: str | None = None,
     ) -> list[Path]:
-        """Overlay jitter-corrected and uncorrected Y profiles for a wire on a given date.
+        """Side-by-side jitter-corrected and uncorrected Y profiles for a wire on a given date.
 
         Args:
             wire: Wire name to filter .h5 files by (e.g. "WS28444").
@@ -30,12 +30,11 @@ class JitterCompareMixin:
         Returns:
             List of Paths to saved plot PNGs.
         """
-        from slac_measurements.wires.analysis_results import load_from_h5
         from slac_measurements.wires.coordinates import stage_to_beam
         from slac_measurements.wires.jitter_correction import compute_jitter
 
-        results = self._discover_h5_files(wire, date, limit)
-        if not results:
+        scans = self.discover_scans(wire, date, limit)
+        if not scans:
             print(f"No .h5 files found for {wire} on {date}")
             return []
 
@@ -45,8 +44,7 @@ class JitterCompareMixin:
         plotdir.mkdir(parents=True, exist_ok=True)
 
         plot_paths: list[Path] = []
-        for filepath in results:
-            data = load_from_h5(str(filepath))
+        for data in scans:
             meta = data.collection_result.metadata
 
             det = detector
@@ -94,34 +92,3 @@ class JitterCompareMixin:
 
         print(f"Plotted {len(plot_paths)} jitter comparison(s) for {wire} on {date}")
         return plot_paths
-
-    def _discover_h5_files(
-        self, wire: str, date: str, limit: int | None
-    ) -> list[Path]:
-        """Find .h5 files for a given wire and date, sorted most-recent first."""
-        from slac_measurements.wires.analysis_results import load_from_h5
-
-        dt = datetime.strptime(date, "%Y-%m-%d")
-        day_dir = Path(_BASE_DIR) / f"{dt:%Y}" / f"{dt:%m}" / f"{dt:%d}"
-
-        if not day_dir.exists():
-            return []
-
-        candidates: list[tuple[datetime, Path]] = []
-        for h5_path in sorted(day_dir.glob("*.h5")):
-            try:
-                data = load_from_h5(str(h5_path))
-            except Exception:
-                continue
-            meta = data.collection_result.metadata
-            if meta.wire_name != wire:
-                continue
-            ts = meta.timestamp or datetime.min
-            candidates.append((ts, h5_path))
-
-        candidates.sort(key=lambda x: x[0], reverse=True)
-
-        if limit is not None:
-            candidates = candidates[:limit]
-
-        return [path for _, path in candidates]
