@@ -22,13 +22,14 @@ from ._constants import (
     dated_output_dir,
 )
 from ._diagnostics import DiagnosticsMixin
+from ._jitter_compare import JitterCompareMixin
 from ._motion import MotionTestMixin
 from ._results import ResultsMixin
 from ._run import RunMixin
 
 
 @dataclass
-class WireScanSuite(DiagnosticsMixin, MotionTestMixin, CollectMixin, RunMixin, ResultsMixin, WireScanSuiteBase):
+class WireScanSuite(JitterCompareMixin, DiagnosticsMixin, MotionTestMixin, CollectMixin, RunMixin, ResultsMixin, WireScanSuiteBase):
     """High-level orchestration layer for wire scanner beam profile measurements.
 
     Transforms low-level EPICS device controls (wire positioning, data collection,

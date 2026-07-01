@@ -414,3 +414,79 @@ class WireScanView:
         ax.legend()
         fig.tight_layout()
         return fig
+
+    # ------------------------------------------------------------------
+    # Jitter comparison: corrected vs uncorrected Y profile overlay
+    # ------------------------------------------------------------------
+
+    def plot_jitter_compare(
+        self,
+        uncorrected_data,
+        corrected_data,
+        wire: str,
+        detector: str,
+        plotdir: Path,
+        stamp: str,
+        show: bool = True,
+        save: bool = True,
+    ) -> Path | None:
+        """Overlay uncorrected and jitter-corrected Y profiles on a single axes.
+
+        Args:
+            uncorrected_data: Analysis result without jitter correction.
+            corrected_data: Analysis result with jitter correction applied.
+            wire: Wire name for titles and filenames.
+            detector: Detector name for profile data.
+            plotdir: Directory to write PNG file into.
+            stamp: Timestamp string appended to filename.
+            show: If True, display the figure interactively.
+            save: If True, save figure to plotdir.
+
+        Returns:
+            Path to saved PNG, or None if save is False.
+        """
+        uncorr_profile = uncorrected_data.profiles.get("y")
+        corr_profile = corrected_data.profiles.get("y")
+
+        if uncorr_profile is None or corr_profile is None:
+            return None
+
+        x_uncorr = np.asarray(uncorr_profile.positions)
+        y_uncorr = np.asarray(uncorr_profile.detectors[detector].values)
+
+        x_corr = np.asarray(corr_profile.positions)
+        y_corr = np.asarray(corr_profile.detectors[detector].values)
+
+        units = "% Loss" if detector == "TMITLOSS" else "Counts"
+
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+
+        ax.plot(
+            x_uncorr, y_uncorr,
+            label="Uncorrected", linestyle="--", color="#d62728", alpha=0.8,
+        )
+        ax.plot(
+            x_corr, y_corr,
+            label="Jitter-corrected", linestyle="-", color="#1f77b4",
+        )
+
+        ax.set_xlabel("Wire Position (stage, µm)")
+        ax.set_ylabel(f"{detector} ({units})")
+
+        jitter_rms = corrected_data.jitter_rms
+        rms_str = ""
+        if jitter_rms is not None:
+            rms_str = f"  |  jitter RMS: ({jitter_rms[0]:.1f}, {jitter_rms[1]:.1f}) µm"
+        ax.set_title(f"{wire} Y Profile — Jitter Comparison ({stamp}){rms_str}")
+
+        ax.legend(loc="upper right")
+        ax.grid(True, which="both", linestyle="--", alpha=0.6)
+        fig.tight_layout()
+
+        path = None
+        if save:
+            path = self.save_fig(fig, f"JitterCompare_{wire}", plotdir, stamp)
+        if show:
+            fig.show()
+        return path
