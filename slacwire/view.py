@@ -432,12 +432,7 @@ class WireScanView:
         show: bool = True,
         save: bool = True,
     ) -> Path | None:
-        """Overlay uncorrected and jitter-corrected Y profiles on a single axes.
-
-        The detector values are identical for both traces — jitter correction
-        shifts the beam-coordinate positions each pulse maps to, not the
-        measured signal. This plot shows both position mappings against the
-        same detector response.
+        """Side-by-side Y profiles: uncorrected (left) and jitter-corrected (right).
 
         Args:
             x_uncorrected: Beam-coordinate positions without jitter correction.
@@ -456,28 +451,23 @@ class WireScanView:
         """
         units = "% Loss" if detector == "TMITLOSS" else "Counts"
 
-        fig = plt.figure()
-        ax = fig.add_subplot(1, 1, 1)
+        fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
 
-        ax.plot(
-            x_uncorrected, detector_values,
-            label="Uncorrected", linestyle="--", color="#d62728", alpha=0.8,
-        )
-        ax.plot(
-            x_corrected, detector_values,
-            label="Jitter-corrected", linestyle="-", color="#1f77b4",
-        )
+        ax_left.plot(x_uncorrected, detector_values, color="#d62728")
+        ax_left.set_xlabel("Beam Position (µm)")
+        ax_left.set_ylabel(f"{detector} ({units})")
+        ax_left.set_title("Uncorrected")
+        ax_left.grid(True, which="both", linestyle="--", alpha=0.6)
 
-        ax.set_xlabel("Beam Position (µm)")
-        ax.set_ylabel(f"{detector} ({units})")
+        ax_right.plot(x_corrected, detector_values, color="#1f77b4")
+        ax_right.set_xlabel("Beam Position (µm)")
+        ax_right.set_title("Jitter-corrected")
+        ax_right.grid(True, which="both", linestyle="--", alpha=0.6)
 
         rms_str = ""
         if jitter_rms is not None:
-            rms_str = f"  |  jitter RMS: ({jitter_rms[0]:.1f}, {jitter_rms[1]:.1f}) µm"
-        ax.set_title(f"{wire} Y Profile — Jitter Comparison ({stamp}){rms_str}")
-
-        ax.legend(loc="upper right")
-        ax.grid(True, which="both", linestyle="--", alpha=0.6)
+            rms_str = f"  —  jitter RMS: ({jitter_rms[0]:.1f}, {jitter_rms[1]:.1f}) µm"
+        fig.suptitle(f"{wire} Y Profile ({stamp}){rms_str}", fontsize=12)
         fig.tight_layout()
 
         path = None
