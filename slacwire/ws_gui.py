@@ -349,15 +349,8 @@ class WireScanSuiteGUI(Display):
         if not file_path:
             return
 
-        load_func = self._get_load_function()
-        if load_func is None:
-            self.logger.info(
-                "Could not import load_from_h5 function for loading."
-            )
-            return
-
         try:
-            result = load_func(file_path)
+            result = self.suite.load_scan(file_path)
         except Exception as exc:
             self.logger.info("Failed to load data: %s", exc)
             return
@@ -370,15 +363,6 @@ class WireScanSuiteGUI(Display):
         self.loaded_results[wire_name] = result
         self.logger.info("Successfully loaded data for %s", wire_name)
         self.dataChanged.emit()
-
-    def _get_load_function(self):
-        try:
-            module = importlib.import_module(
-                "lcls_tools.common.measurements.ws_analysis_results"
-            )
-            return module.load_from_h5
-        except Exception:
-            return None
 
     def logbook_callback(self):
         wire = self.measurement.wire
