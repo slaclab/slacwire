@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
+
 from ._constants import _BASE_DIR
 
 
@@ -29,6 +31,8 @@ class JitterCompareMixin:
             List of Paths to saved plot PNGs.
         """
         from slac_measurements.wires.analysis_results import load_from_h5
+        from slac_measurements.wires.coordinates import stage_to_beam
+        from slac_measurements.wires.jitter_correction import compute_jitter
 
         results = self._discover_h5_files(wire, date, limit)
         if not results:
@@ -49,17 +53,37 @@ class JitterCompareMixin:
             if det is None:
                 det = getattr(meta, "rms_detector", None) or meta.default_detector
 
-            uncorrected = data.reanalyze(jitter_correction=False)
-            corrected = data.reanalyze(jitter_correction=True)
+            if "y" not in data.profiles:
+                continue
+
+            y_profile = data.profiles["y"]
+            x_stage = np.asarray(y_profile.positions)
+            detector_values = np.asarray(y_profile.detectors[det].values)
+            install_angle = meta.install_angle
+
+            x_beam_uncorrected = stage_to_beam(x_stage, "y", install_angle)
+
+            try:
+                jitter_x, jitter_y = compute_jitter(
+                    data.collection_result, meta.beampath, "BLEM"
+                )
+                jy = jitter_y[y_profile.profile_indices]
+                x_beam_corrected = x_beam_uncorrected - jy
+            except Exception:
+                continue
+
+            jitter_rms = (float(np.std(jitter_x)), float(np.std(jitter_y)))
 
             ts = meta.timestamp
             stamp = ts.strftime("%Y%m%d_%H%M%S") if ts else self._stamp()
 
             path = self.view.plot_jitter_compare(
-                uncorrected_data=uncorrected,
-                corrected_data=corrected,
+                x_uncorrected=x_beam_uncorrected,
+                x_corrected=x_beam_corrected,
+                detector_values=detector_values,
                 wire=wire,
                 detector=det,
+                jitter_rms=jitter_rms,
                 plotdir=plotdir,
                 stamp=stamp,
                 show=self.show,

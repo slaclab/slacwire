@@ -421,10 +421,12 @@ class WireScanView:
 
     def plot_jitter_compare(
         self,
-        uncorrected_data,
-        corrected_data,
+        x_uncorrected: np.ndarray,
+        x_corrected: np.ndarray,
+        detector_values: np.ndarray,
         wire: str,
         detector: str,
+        jitter_rms: tuple[float, float] | None,
         plotdir: Path,
         stamp: str,
         show: bool = True,
@@ -432,11 +434,18 @@ class WireScanView:
     ) -> Path | None:
         """Overlay uncorrected and jitter-corrected Y profiles on a single axes.
 
+        The detector values are identical for both traces — jitter correction
+        shifts the beam-coordinate positions each pulse maps to, not the
+        measured signal. This plot shows both position mappings against the
+        same detector response.
+
         Args:
-            uncorrected_data: Analysis result without jitter correction.
-            corrected_data: Analysis result with jitter correction applied.
+            x_uncorrected: Beam-coordinate positions without jitter correction.
+            x_corrected: Beam-coordinate positions with jitter correction.
+            detector_values: Detector signal values (same for both).
             wire: Wire name for titles and filenames.
-            detector: Detector name for profile data.
+            detector: Detector name for axis labels.
+            jitter_rms: (x_rms, y_rms) in µm, or None.
             plotdir: Directory to write PNG file into.
             stamp: Timestamp string appended to filename.
             show: If True, display the figure interactively.
@@ -445,36 +454,23 @@ class WireScanView:
         Returns:
             Path to saved PNG, or None if save is False.
         """
-        uncorr_profile = uncorrected_data.profiles.get("y")
-        corr_profile = corrected_data.profiles.get("y")
-
-        if uncorr_profile is None or corr_profile is None:
-            return None
-
-        x_uncorr = np.asarray(uncorr_profile.positions)
-        y_uncorr = np.asarray(uncorr_profile.detectors[detector].values)
-
-        x_corr = np.asarray(corr_profile.positions)
-        y_corr = np.asarray(corr_profile.detectors[detector].values)
-
         units = "% Loss" if detector == "TMITLOSS" else "Counts"
 
         fig = plt.figure()
         ax = fig.add_subplot(1, 1, 1)
 
         ax.plot(
-            x_uncorr, y_uncorr,
+            x_uncorrected, detector_values,
             label="Uncorrected", linestyle="--", color="#d62728", alpha=0.8,
         )
         ax.plot(
-            x_corr, y_corr,
+            x_corrected, detector_values,
             label="Jitter-corrected", linestyle="-", color="#1f77b4",
         )
 
-        ax.set_xlabel("Wire Position (stage, µm)")
+        ax.set_xlabel("Beam Position (µm)")
         ax.set_ylabel(f"{detector} ({units})")
 
-        jitter_rms = corrected_data.jitter_rms
         rms_str = ""
         if jitter_rms is not None:
             rms_str = f"  |  jitter RMS: ({jitter_rms[0]:.1f}, {jitter_rms[1]:.1f}) µm"
