@@ -67,10 +67,10 @@ class JitterCompareMixin:
                 )
                 jy = jitter_y[y_profile.profile_indices]
                 x_beam_corrected = x_beam_uncorrected - jy
+                jitter_rms = (float(np.std(jitter_x)), float(np.std(jitter_y)))
             except Exception:
-                continue
-
-            jitter_rms = (float(np.std(jitter_x)), float(np.std(jitter_y)))
+                x_beam_corrected = None
+                jitter_rms = None
 
             from slac_measurements.fitting import gaussian
 
@@ -93,48 +93,52 @@ class JitterCompareMixin:
                 fit_sigma_unc = None
 
             # Fit corrected profile
-            sort_idx = np.argsort(x_beam_corrected)
-            x_sorted = x_beam_corrected[sort_idx]
-            y_sorted = detector_values[sort_idx]
-
+            x_sorted = None
             residuals_corr = None
-            try:
-                fp = gaussian.fit(pos=x_sorted, data=y_sorted)
-                fit_x = np.linspace(x_sorted.min(), x_sorted.max(), 200)
-                fit_curve = gaussian.curve(x=fit_x, **{k: v for k, v in fp.items() if k != "error"})
-                fit_sigma = fp["sigma"]
-                fit_at_data = gaussian.curve(x=x_sorted, **{k: v for k, v in fp.items() if k != "error"})
-                residuals_corr = y_sorted - fit_at_data
-            except Exception:
-                fit_x = None
-                fit_curve = None
-                fit_sigma = None
+            fit_x = None
+            fit_curve = None
+            fit_sigma = None
+            if x_beam_corrected is not None:
+                sort_idx = np.argsort(x_beam_corrected)
+                x_sorted = x_beam_corrected[sort_idx]
+                y_sorted = detector_values[sort_idx]
+
+                try:
+                    fp = gaussian.fit(pos=x_sorted, data=y_sorted)
+                    fit_x = np.linspace(x_sorted.min(), x_sorted.max(), 200)
+                    fit_curve = gaussian.curve(x=fit_x, **{k: v for k, v in fp.items() if k != "error"})
+                    fit_sigma = fp["sigma"]
+                    fit_at_data = gaussian.curve(x=x_sorted, **{k: v for k, v in fp.items() if k != "error"})
+                    residuals_corr = y_sorted - fit_at_data
+                except Exception:
+                    pass
 
             ts = meta.timestamp
             stamp = ts.strftime("%Y%m%d_%H%M%S") if ts else self._stamp()
 
-            path = self.view.plot_jitter_compare(
-                x_uncorrected=x_beam_uncorrected,
-                x_corrected=x_beam_corrected,
-                detector_values=detector_values,
-                wire=wire,
-                detector=det,
-                jitter_rms=jitter_rms,
-                fit_x_uncorrected=fit_x_unc,
-                fit_curve_uncorrected=fit_curve_unc,
-                fit_sigma_uncorrected=fit_sigma_unc,
-                fit_x_corrected=fit_x,
-                fit_curve_corrected=fit_curve,
-                fit_sigma_corrected=fit_sigma,
-                plotdir=plotdir,
-                stamp=stamp,
-                show=self.show,
-                save=self.save_plots,
-            )
-            if path is not None:
-                plot_paths.append(path)
+            if x_beam_corrected is not None:
+                path = self.view.plot_jitter_compare(
+                    x_uncorrected=x_beam_uncorrected,
+                    x_corrected=x_beam_corrected,
+                    detector_values=detector_values,
+                    wire=wire,
+                    detector=det,
+                    jitter_rms=jitter_rms,
+                    fit_x_uncorrected=fit_x_unc,
+                    fit_curve_uncorrected=fit_curve_unc,
+                    fit_sigma_uncorrected=fit_sigma_unc,
+                    fit_x_corrected=fit_x,
+                    fit_curve_corrected=fit_curve,
+                    fit_sigma_corrected=fit_sigma,
+                    plotdir=plotdir,
+                    stamp=stamp,
+                    show=self.show,
+                    save=self.save_plots,
+                )
+                if path is not None:
+                    plot_paths.append(path)
 
-            if residuals_unc is not None and residuals_corr is not None:
+            if residuals_unc is not None:
                 vib_path = self.view.plot_vibration_residuals(
                     x_uncorrected=x_sorted_unc,
                     residuals_uncorrected=residuals_unc,

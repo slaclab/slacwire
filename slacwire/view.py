@@ -517,8 +517,8 @@ class WireScanView:
         self,
         x_uncorrected: np.ndarray,
         residuals_uncorrected: np.ndarray,
-        x_corrected: np.ndarray,
-        residuals_corrected: np.ndarray,
+        x_corrected: np.ndarray | None,
+        residuals_corrected: np.ndarray | None,
         wire: str,
         detector: str,
         plotdir: Path,
@@ -528,8 +528,11 @@ class WireScanView:
     ) -> Path | None:
         """Side-by-side residual (data - fit) plots to visualize vibration."""
         units = "% Loss" if detector == "TMITLOSS" else "Counts"
+        has_corrected = x_corrected is not None and residuals_corrected is not None
+        ncols = 2 if has_corrected else 1
 
-        fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+        fig, axes = plt.subplots(1, ncols, figsize=(6 * ncols, 5), sharey=True, squeeze=False)
+        ax_left = axes[0, 0]
 
         ax_left.scatter(x_uncorrected, residuals_uncorrected, s=10, color="#d62728")
         ax_left.axhline(0, color="black", linewidth=0.8, linestyle="--")
@@ -538,11 +541,13 @@ class WireScanView:
         ax_left.set_title("Uncorrected")
         ax_left.grid(True, which="both", linestyle="--", alpha=0.6)
 
-        ax_right.scatter(x_corrected, residuals_corrected, s=10, color="#1f77b4")
-        ax_right.axhline(0, color="black", linewidth=0.8, linestyle="--")
-        ax_right.set_xlabel("Beam Position (µm)")
-        ax_right.set_title("Jitter-corrected")
-        ax_right.grid(True, which="both", linestyle="--", alpha=0.6)
+        if has_corrected:
+            ax_right = axes[0, 1]
+            ax_right.scatter(x_corrected, residuals_corrected, s=10, color="#1f77b4")
+            ax_right.axhline(0, color="black", linewidth=0.8, linestyle="--")
+            ax_right.set_xlabel("Beam Position (µm)")
+            ax_right.set_title("Jitter-corrected")
+            ax_right.grid(True, which="both", linestyle="--", alpha=0.6)
 
         fig.suptitle(f"{wire} Vibration Residuals ({stamp})", fontsize=12)
         fig.tight_layout()
