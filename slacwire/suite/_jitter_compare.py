@@ -63,7 +63,7 @@ class JitterCompareMixin:
 
             try:
                 jitter_x, jitter_y = compute_jitter(
-                    data.collection_result, meta.beampath, "BLEM"
+                    data.collection_result, meta.beampath, "BMAD"
                 )
                 jy = jitter_y[y_profile.profile_indices]
                 x_beam_corrected = x_beam_uncorrected - jy

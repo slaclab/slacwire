@@ -526,28 +526,46 @@ class WireScanView:
         show: bool = True,
         save: bool = True,
     ) -> Path | None:
-        """Side-by-side residual (data - fit) plots to visualize vibration."""
+        """Side-by-side residual (data - fit) plots with FFT power spectrum."""
         units = "% Loss" if detector == "TMITLOSS" else "Counts"
         has_corrected = x_corrected is not None and residuals_corrected is not None
-        ncols = 2 if has_corrected else 1
+        ncols = 3 if has_corrected else 2
 
-        fig, axes = plt.subplots(1, ncols, figsize=(6 * ncols, 5), sharey=True, squeeze=False)
+        fig, axes = plt.subplots(1, ncols, figsize=(6 * ncols, 5), squeeze=False)
         ax_left = axes[0, 0]
 
         ax_left.scatter(x_uncorrected, residuals_uncorrected, s=10, color="#d62728")
         ax_left.axhline(0, color="black", linewidth=0.8, linestyle="--")
         ax_left.set_xlabel("Beam Position (µm)")
         ax_left.set_ylabel(f"Residual ({units})")
-        ax_left.set_title("Uncorrected")
+        ax_left.set_title("Uncorrected Residuals")
         ax_left.grid(True, which="both", linestyle="--", alpha=0.6)
 
         if has_corrected:
-            ax_right = axes[0, 1]
-            ax_right.scatter(x_corrected, residuals_corrected, s=10, color="#1f77b4")
-            ax_right.axhline(0, color="black", linewidth=0.8, linestyle="--")
-            ax_right.set_xlabel("Beam Position (µm)")
-            ax_right.set_title("Jitter-corrected")
-            ax_right.grid(True, which="both", linestyle="--", alpha=0.6)
+            ax_mid = axes[0, 1]
+            ax_mid.scatter(x_corrected, residuals_corrected, s=10, color="#1f77b4")
+            ax_mid.axhline(0, color="black", linewidth=0.8, linestyle="--")
+            ax_mid.set_xlabel("Beam Position (µm)")
+            ax_mid.set_title("Jitter-corrected Residuals")
+            ax_mid.grid(True, which="both", linestyle="--", alpha=0.6)
+
+        ax_fft = axes[0, -1]
+        residuals_for_fft = residuals_corrected if has_corrected else residuals_uncorrected
+        x_for_fft = x_corrected if has_corrected else x_uncorrected
+
+        n = len(residuals_for_fft)
+        x_uniform = np.linspace(x_for_fft.min(), x_for_fft.max(), n)
+        resid_uniform = np.interp(x_uniform, x_for_fft, residuals_for_fft)
+
+        step = (x_for_fft.max() - x_for_fft.min()) / (n - 1)
+        freqs = np.fft.rfftfreq(n, d=step)
+        power = np.abs(np.fft.rfft(resid_uniform)) ** 2
+
+        ax_fft.plot(freqs[1:], power[1:], color="#2ca02c", linewidth=1)
+        ax_fft.set_xlabel("Spatial Frequency (1/µm)")
+        ax_fft.set_ylabel("Power")
+        ax_fft.set_title("FFT Power Spectrum")
+        ax_fft.grid(True, which="both", linestyle="--", alpha=0.6)
 
         fig.suptitle(f"{wire} Vibration Residuals ({stamp})", fontsize=12)
         fig.tight_layout()
