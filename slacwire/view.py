@@ -510,3 +510,46 @@ class WireScanView:
         if show:
             fig.show()
         return path
+
+    # ------------------------------------------------------------------
+
+    def plot_vibration_residuals(
+        self,
+        x_uncorrected: np.ndarray,
+        residuals_uncorrected: np.ndarray,
+        x_corrected: np.ndarray,
+        residuals_corrected: np.ndarray,
+        wire: str,
+        detector: str,
+        plotdir: Path,
+        stamp: str,
+        show: bool = True,
+        save: bool = True,
+    ) -> Path | None:
+        """Side-by-side residual (data - fit) plots to visualize vibration."""
+        units = "% Loss" if detector == "TMITLOSS" else "Counts"
+
+        fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+
+        ax_left.scatter(x_uncorrected, residuals_uncorrected, s=10, color="#d62728")
+        ax_left.axhline(0, color="black", linewidth=0.8, linestyle="--")
+        ax_left.set_xlabel("Beam Position (µm)")
+        ax_left.set_ylabel(f"Residual ({units})")
+        ax_left.set_title("Uncorrected")
+        ax_left.grid(True, which="both", linestyle="--", alpha=0.6)
+
+        ax_right.scatter(x_corrected, residuals_corrected, s=10, color="#1f77b4")
+        ax_right.axhline(0, color="black", linewidth=0.8, linestyle="--")
+        ax_right.set_xlabel("Beam Position (µm)")
+        ax_right.set_title("Jitter-corrected")
+        ax_right.grid(True, which="both", linestyle="--", alpha=0.6)
+
+        fig.suptitle(f"{wire} Vibration Residuals ({stamp})", fontsize=12)
+        fig.tight_layout()
+
+        path = None
+        if save:
+            path = self.save_fig(fig, f"Vibration_{wire}", plotdir, stamp)
+        if show:
+            fig.show()
+        return path

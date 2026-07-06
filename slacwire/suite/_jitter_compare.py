@@ -79,11 +79,14 @@ class JitterCompareMixin:
             x_sorted_unc = x_beam_uncorrected[sort_idx_unc]
             y_sorted_unc = detector_values[sort_idx_unc]
 
+            residuals_unc = None
             try:
                 fp_unc = gaussian.fit(pos=x_sorted_unc, data=y_sorted_unc)
                 fit_x_unc = np.linspace(x_sorted_unc.min(), x_sorted_unc.max(), 200)
                 fit_curve_unc = gaussian.curve(x=fit_x_unc, **{k: v for k, v in fp_unc.items() if k != "error"})
                 fit_sigma_unc = fp_unc["sigma"]
+                fit_at_data_unc = gaussian.curve(x=x_sorted_unc, **{k: v for k, v in fp_unc.items() if k != "error"})
+                residuals_unc = y_sorted_unc - fit_at_data_unc
             except Exception:
                 fit_x_unc = None
                 fit_curve_unc = None
@@ -94,11 +97,14 @@ class JitterCompareMixin:
             x_sorted = x_beam_corrected[sort_idx]
             y_sorted = detector_values[sort_idx]
 
+            residuals_corr = None
             try:
                 fp = gaussian.fit(pos=x_sorted, data=y_sorted)
                 fit_x = np.linspace(x_sorted.min(), x_sorted.max(), 200)
                 fit_curve = gaussian.curve(x=fit_x, **{k: v for k, v in fp.items() if k != "error"})
                 fit_sigma = fp["sigma"]
+                fit_at_data = gaussian.curve(x=x_sorted, **{k: v for k, v in fp.items() if k != "error"})
+                residuals_corr = y_sorted - fit_at_data
             except Exception:
                 fit_x = None
                 fit_curve = None
@@ -127,6 +133,22 @@ class JitterCompareMixin:
             )
             if path is not None:
                 plot_paths.append(path)
+
+            if residuals_unc is not None and residuals_corr is not None:
+                vib_path = self.view.plot_vibration_residuals(
+                    x_uncorrected=x_sorted_unc,
+                    residuals_uncorrected=residuals_unc,
+                    x_corrected=x_sorted,
+                    residuals_corrected=residuals_corr,
+                    wire=wire,
+                    detector=det,
+                    plotdir=plotdir,
+                    stamp=stamp,
+                    show=self.show,
+                    save=self.save_plots,
+                )
+                if vib_path is not None:
+                    plot_paths.append(vib_path)
 
         print(f"Plotted {len(plot_paths)} jitter comparison(s) for {wire} on {date}")
         return plot_paths
