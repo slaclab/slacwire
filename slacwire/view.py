@@ -519,6 +519,8 @@ class WireScanView:
         residuals_uncorrected: np.ndarray,
         x_corrected: np.ndarray | None,
         residuals_corrected: np.ndarray | None,
+        fft_freqs: np.ndarray,
+        fft_power: np.ndarray,
         wire: str,
         detector: str,
         plotdir: Path,
@@ -550,18 +552,7 @@ class WireScanView:
             ax_mid.grid(True, which="both", linestyle="--", alpha=0.6)
 
         ax_fft = axes[0, -1]
-        residuals_for_fft = residuals_corrected if has_corrected else residuals_uncorrected
-        x_for_fft = x_corrected if has_corrected else x_uncorrected
-
-        n = len(residuals_for_fft)
-        x_uniform = np.linspace(x_for_fft.min(), x_for_fft.max(), n)
-        resid_uniform = np.interp(x_uniform, x_for_fft, residuals_for_fft)
-
-        step = (x_for_fft.max() - x_for_fft.min()) / (n - 1)
-        freqs = np.fft.rfftfreq(n, d=step)
-        power = np.abs(np.fft.rfft(resid_uniform)) ** 2
-
-        ax_fft.plot(freqs[1:], power[1:], color="#2ca02c", linewidth=1)
+        ax_fft.plot(fft_freqs[1:], fft_power[1:], color="#2ca02c", linewidth=1)
         ax_fft.set_xlabel("Spatial Frequency (1/µm)")
         ax_fft.set_ylabel("Power")
         ax_fft.set_title("FFT Power Spectrum")

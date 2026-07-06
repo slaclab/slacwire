@@ -8,6 +8,57 @@ import numpy as np
 from ._constants import _BASE_DIR
 
 
+def _fit_profile(x_beam: np.ndarray, detector_values: np.ndarray) -> dict:
+    """Fit a Gaussian to a profile and return fit curve data plus residuals.
+
+    Returns dict with keys: x_sorted, y_sorted, fit_x, fit_curve, fit_sigma, residuals.
+    All values are None (except x_sorted/y_sorted) if the fit fails.
+    """
+    from slac_measurements.fitting import gaussian
+
+    sort_idx = np.argsort(x_beam)
+    x_sorted = x_beam[sort_idx]
+    y_sorted = detector_values[sort_idx]
+
+    try:
+        fp = gaussian.fit(pos=x_sorted, data=y_sorted)
+        fit_x = np.linspace(x_sorted.min(), x_sorted.max(), 200)
+        fit_params = {k: v for k, v in fp.items() if k != "error"}
+        fit_curve = gaussian.curve(x=fit_x, **fit_params)
+        fit_sigma = fp["sigma"]
+        fit_at_data = gaussian.curve(x=x_sorted, **fit_params)
+        residuals = y_sorted - fit_at_data
+    except Exception:
+        fit_x = None
+        fit_curve = None
+        fit_sigma = None
+        residuals = None
+
+    return {
+        "x_sorted": x_sorted,
+        "y_sorted": y_sorted,
+        "fit_x": fit_x,
+        "fit_curve": fit_curve,
+        "fit_sigma": fit_sigma,
+        "residuals": residuals,
+    }
+
+
+def _compute_fft(x: np.ndarray, residuals: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Compute FFT power spectrum of residuals interpolated onto a uniform grid.
+
+    Returns (freqs, power) arrays.
+    """
+    n = len(residuals)
+    x_uniform = np.linspace(x.min(), x.max(), n)
+    resid_uniform = np.interp(x_uniform, x, residuals)
+
+    step = (x.max() - x.min()) / (n - 1)
+    freqs = np.fft.rfftfreq(n, d=step)
+    power = np.abs(np.fft.rfft(resid_uniform)) ** 2
+    return freqs, power
+
+
 class JitterCompareMixin:
     """Compare Y profiles with and without jitter correction from stored data."""
 
@@ -72,51 +123,16 @@ class JitterCompareMixin:
                 x_beam_corrected = None
                 jitter_rms = None
 
-            from slac_measurements.fitting import gaussian
+            unc = _fit_profile(x_beam_uncorrected, detector_values)
 
-            # Fit uncorrected profile
-            sort_idx_unc = np.argsort(x_beam_uncorrected)
-            x_sorted_unc = x_beam_uncorrected[sort_idx_unc]
-            y_sorted_unc = detector_values[sort_idx_unc]
-
-            residuals_unc = None
-            try:
-                fp_unc = gaussian.fit(pos=x_sorted_unc, data=y_sorted_unc)
-                fit_x_unc = np.linspace(x_sorted_unc.min(), x_sorted_unc.max(), 200)
-                fit_curve_unc = gaussian.curve(x=fit_x_unc, **{k: v for k, v in fp_unc.items() if k != "error"})
-                fit_sigma_unc = fp_unc["sigma"]
-                fit_at_data_unc = gaussian.curve(x=x_sorted_unc, **{k: v for k, v in fp_unc.items() if k != "error"})
-                residuals_unc = y_sorted_unc - fit_at_data_unc
-            except Exception:
-                fit_x_unc = None
-                fit_curve_unc = None
-                fit_sigma_unc = None
-
-            # Fit corrected profile
-            x_sorted = None
-            residuals_corr = None
-            fit_x = None
-            fit_curve = None
-            fit_sigma = None
+            corr = None
             if x_beam_corrected is not None:
-                sort_idx = np.argsort(x_beam_corrected)
-                x_sorted = x_beam_corrected[sort_idx]
-                y_sorted = detector_values[sort_idx]
-
-                try:
-                    fp = gaussian.fit(pos=x_sorted, data=y_sorted)
-                    fit_x = np.linspace(x_sorted.min(), x_sorted.max(), 200)
-                    fit_curve = gaussian.curve(x=fit_x, **{k: v for k, v in fp.items() if k != "error"})
-                    fit_sigma = fp["sigma"]
-                    fit_at_data = gaussian.curve(x=x_sorted, **{k: v for k, v in fp.items() if k != "error"})
-                    residuals_corr = y_sorted - fit_at_data
-                except Exception:
-                    pass
+                corr = _fit_profile(x_beam_corrected, detector_values)
 
             ts = meta.timestamp
             stamp = ts.strftime("%Y%m%d_%H%M%S") if ts else self._stamp()
 
-            if x_beam_corrected is not None:
+            if x_beam_corrected is not None and corr is not None:
                 path = self.view.plot_jitter_compare(
                     x_uncorrected=x_beam_uncorrected,
                     x_corrected=x_beam_corrected,
@@ -124,12 +140,12 @@ class JitterCompareMixin:
                     wire=wire,
                     detector=det,
                     jitter_rms=jitter_rms,
-                    fit_x_uncorrected=fit_x_unc,
-                    fit_curve_uncorrected=fit_curve_unc,
-                    fit_sigma_uncorrected=fit_sigma_unc,
-                    fit_x_corrected=fit_x,
-                    fit_curve_corrected=fit_curve,
-                    fit_sigma_corrected=fit_sigma,
+                    fit_x_uncorrected=unc["fit_x"],
+                    fit_curve_uncorrected=unc["fit_curve"],
+                    fit_sigma_uncorrected=unc["fit_sigma"],
+                    fit_x_corrected=corr["fit_x"],
+                    fit_curve_corrected=corr["fit_curve"],
+                    fit_sigma_corrected=corr["fit_sigma"],
                     plotdir=plotdir,
                     stamp=stamp,
                     show=self.show,
@@ -138,12 +154,19 @@ class JitterCompareMixin:
                 if path is not None:
                     plot_paths.append(path)
 
-            if residuals_unc is not None:
+            if unc["residuals"] is not None:
+                if corr is not None and corr["residuals"] is not None:
+                    fft_freqs, fft_power = _compute_fft(corr["x_sorted"], corr["residuals"])
+                else:
+                    fft_freqs, fft_power = _compute_fft(unc["x_sorted"], unc["residuals"])
+
                 vib_path = self.view.plot_vibration_residuals(
-                    x_uncorrected=x_sorted_unc,
-                    residuals_uncorrected=residuals_unc,
-                    x_corrected=x_sorted,
-                    residuals_corrected=residuals_corr,
+                    x_uncorrected=unc["x_sorted"],
+                    residuals_uncorrected=unc["residuals"],
+                    x_corrected=corr["x_sorted"] if corr else None,
+                    residuals_corrected=corr["residuals"] if corr else None,
+                    fft_freqs=fft_freqs,
+                    fft_power=fft_power,
                     wire=wire,
                     detector=det,
                     plotdir=plotdir,
