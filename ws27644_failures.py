@@ -18,19 +18,19 @@ def main():
         with engine.connect() as conn:
             results = conn.execute(
                 text("""
-                    SELECT DATE(timestamp_iso) AS day, COUNT(*) AS failure_count
+                    SELECT DATE(timestamp_iso) AS day, error, COUNT(*) AS failure_count
                     FROM runs
                     WHERE wire = :wire
                       AND status = 'error'
                       AND timestamp_iso >= :start
                       AND timestamp_iso < :end
-                    GROUP BY day
-                    ORDER BY day
+                    GROUP BY day, error
+                    ORDER BY day, failure_count DESC
                 """),
                 {"wire": "WS27644", "start": "2026-06-17T00:00:00", "end": "2026-06-20T00:00:00"},
             )
             for row in results:
-                print(row.day, row.failure_count)
+                print(f"{row.day}  ({row.failure_count}x)  {row.error}")
 
 
 if __name__ == "__main__":
