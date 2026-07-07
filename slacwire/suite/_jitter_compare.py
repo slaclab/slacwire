@@ -179,3 +179,65 @@ class JitterCompareMixin:
 
         print(f"Plotted {len(plot_paths)} jitter comparison(s) for {wire} on {date}")
         return plot_paths
+
+    def vibration_summary(
+        self,
+        wire: str,
+        date: str,
+        limit: int | None = 10,
+        detector: str | None = None,
+    ) -> dict:
+        """Compute vibration RMS across scans for quantitative wire comparison.
+
+        Returns dict with keys: wire, n_scans, rms_values, mean_rms, std_rms.
+        """
+        from slac_measurements.wires.coordinates import stage_to_beam
+        from slac_measurements.wires.jitter_correction import compute_jitter
+
+        scans = self.discover_scans(wire, date, limit)
+        if not scans:
+            print(f"No .h5 files found for {wire} on {date}")
+            return {"wire": wire, "n_scans": 0, "rms_values": [], "mean_rms": None, "std_rms": None}
+
+        rms_values: list[float] = []
+        for data in scans:
+            meta = data.collection_result.metadata
+
+            det = detector
+            if det is None:
+                det = getattr(meta, "rms_detector", None) or meta.default_detector
+
+            if "y" not in data.profiles:
+                continue
+
+            y_profile = data.profiles["y"]
+            x_stage = np.asarray(y_profile.positions)
+            detector_values = np.asarray(y_profile.detectors[det].values)
+            install_angle = meta.install_angle
+
+            x_beam = stage_to_beam(x_stage, "y", install_angle)
+
+            try:
+                jitter_x, jitter_y = compute_jitter(
+                    data.collection_result, meta.beampath, "BMAD"
+                )
+                jy = jitter_y[y_profile.profile_indices]
+                x_beam = x_beam - jy
+            except Exception:
+                pass
+
+            result = _fit_profile(x_beam, detector_values)
+            if result["residuals"] is not None:
+                rms_values.append(float(np.std(result["residuals"])))
+
+        mean_rms = float(np.mean(rms_values)) if rms_values else None
+        std_rms = float(np.std(rms_values)) if rms_values else None
+
+        print(f"{wire}: mean vibration RMS = {mean_rms:.2f} ± {std_rms:.2f} ({len(rms_values)} scans)")
+        return {
+            "wire": wire,
+            "n_scans": len(rms_values),
+            "rms_values": rms_values,
+            "mean_rms": mean_rms,
+            "std_rms": std_rms,
+        }
