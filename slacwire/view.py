@@ -567,3 +567,88 @@ class WireScanView:
         if show:
             fig.show()
         return path
+
+    # ------------------------------------------------------------------
+    # Residual comparison (no FFT)
+    # ------------------------------------------------------------------
+
+    def plot_residual_compare(
+        self,
+        x_uncorrected: np.ndarray,
+        residuals_uncorrected: np.ndarray,
+        x_corrected: np.ndarray | None,
+        residuals_corrected: np.ndarray | None,
+        wire: str,
+        detector: str,
+        plotdir: Path,
+        stamp: str,
+        show: bool = True,
+        save: bool = True,
+    ) -> Path | None:
+        """Side-by-side residual (data - fit) scatter plots."""
+        units = "% Loss" if detector == "TMITLOSS" else "Counts"
+        has_corrected = x_corrected is not None and residuals_corrected is not None
+        ncols = 2 if has_corrected else 1
+
+        fig, axes = plt.subplots(1, ncols, figsize=(6 * ncols, 5), squeeze=False)
+        ax_left = axes[0, 0]
+
+        ax_left.scatter(x_uncorrected, residuals_uncorrected, s=10, color="#d62728")
+        ax_left.axhline(0, color="black", linewidth=0.8, linestyle="--")
+        ax_left.set_xlabel("Beam Position (µm)")
+        ax_left.set_ylabel(f"Residual ({units})")
+        ax_left.set_title("Uncorrected Residuals")
+        ax_left.grid(True, which="both", linestyle="--", alpha=0.6)
+
+        if has_corrected:
+            ax_right = axes[0, 1]
+            ax_right.scatter(x_corrected, residuals_corrected, s=10, color="#1f77b4")
+            ax_right.axhline(0, color="black", linewidth=0.8, linestyle="--")
+            ax_right.set_xlabel("Beam Position (µm)")
+            ax_right.set_ylabel(f"Residual ({units})")
+            ax_right.set_title("Jitter-corrected Residuals")
+            ax_right.grid(True, which="both", linestyle="--", alpha=0.6)
+
+        fig.suptitle(f"{wire} Residual Comparison ({stamp})", fontsize=12)
+        fig.tight_layout()
+
+        path = None
+        if save:
+            path = self.save_fig(fig, f"Residuals_{wire}", plotdir, stamp)
+        if show:
+            fig.show()
+        return path
+
+    # ------------------------------------------------------------------
+    # FFT power spectrum (standalone)
+    # ------------------------------------------------------------------
+
+    def plot_fft_spectrum(
+        self,
+        fft_freqs: np.ndarray,
+        fft_power: np.ndarray,
+        wire: str,
+        detector: str,
+        plotdir: Path,
+        stamp: str,
+        show: bool = True,
+        save: bool = True,
+    ) -> Path | None:
+        """Standalone FFT power spectrum of fit residuals."""
+        fig = plt.figure(figsize=(8, 5))
+        ax = fig.add_subplot(1, 1, 1)
+
+        ax.plot(fft_freqs[1:], fft_power[1:], color="#2ca02c", linewidth=1)
+        ax.set_xlabel("Spatial Frequency (1/µm)")
+        ax.set_ylabel("Power")
+        ax.set_title(f"{wire} FFT Power Spectrum ({detector})")
+        ax.grid(True, which="both", linestyle="--", alpha=0.6)
+
+        fig.tight_layout()
+
+        path = None
+        if save:
+            path = self.save_fig(fig, f"FFT_{wire}", plotdir, stamp)
+        if show:
+            fig.show()
+        return path

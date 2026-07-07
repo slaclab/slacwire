@@ -62,24 +62,17 @@ def _compute_fft(x: np.ndarray, residuals: np.ndarray) -> tuple[np.ndarray, np.n
 class JitterCompareMixin:
     """Compare Y profiles with and without jitter correction from stored data."""
 
-    def jitter_compare(
+    def _prepare_jitter_data(
         self,
         wire: str,
         date: str,
         limit: int | None = 10,
         detector: str | None = None,
-    ) -> list[Path]:
-        """Side-by-side jitter-corrected and uncorrected Y profiles for a wire on a given date.
+    ) -> tuple[list[dict], Path]:
+        """Load scans and compute jitter correction, fits, and FFT for each.
 
-        Args:
-            wire: Wire name to filter .h5 files by (e.g. "WS28444").
-            date: ISO date string (YYYY-MM-DD) identifying the data directory.
-            limit: Maximum number of scans to plot (most recent first).
-                Pass None to plot all matching scans.
-            detector: Detector override. If None, uses each file's default.
-
-        Returns:
-            List of Paths to saved plot PNGs.
+        Returns (records, plotdir) where each record contains all computed data
+        needed by the individual plotting methods.
         """
         from slac_measurements.wires.coordinates import stage_to_beam
         from slac_measurements.wires.jitter_correction import compute_jitter
@@ -87,14 +80,14 @@ class JitterCompareMixin:
         scans = self.discover_scans(wire, date, limit)
         if not scans:
             print(f"No .h5 files found for {wire} on {date}")
-            return []
+            return [], Path()
 
         dt = datetime.strptime(date, "%Y-%m-%d")
         day_dir = Path(_BASE_DIR) / f"{dt:%Y}" / f"{dt:%m}" / f"{dt:%d}"
         plotdir = day_dir / "plots"
         plotdir.mkdir(parents=True, exist_ok=True)
 
-        plot_paths: list[Path] = []
+        records: list[dict] = []
         for data in scans:
             meta = data.collection_result.metadata
 
@@ -132,52 +125,170 @@ class JitterCompareMixin:
             ts = meta.timestamp
             stamp = ts.strftime("%Y%m%d_%H%M%S") if ts else self._stamp()
 
-            if x_beam_corrected is not None and corr is not None:
-                path = self.view.plot_jitter_compare(
-                    x_uncorrected=x_beam_uncorrected,
-                    x_corrected=x_beam_corrected,
-                    detector_values=detector_values,
-                    wire=wire,
-                    detector=det,
-                    jitter_rms=jitter_rms,
-                    fit_x_uncorrected=unc["fit_x"],
-                    fit_curve_uncorrected=unc["fit_curve"],
-                    fit_sigma_uncorrected=unc["fit_sigma"],
-                    fit_x_corrected=corr["fit_x"],
-                    fit_curve_corrected=corr["fit_curve"],
-                    fit_sigma_corrected=corr["fit_sigma"],
-                    plotdir=plotdir,
-                    stamp=stamp,
-                    show=self.show,
-                    save=self.save_plots,
-                )
-                if path is not None:
-                    plot_paths.append(path)
+            records.append({
+                "wire": wire,
+                "detector": det,
+                "stamp": stamp,
+                "x_beam_uncorrected": x_beam_uncorrected,
+                "x_beam_corrected": x_beam_corrected,
+                "detector_values": detector_values,
+                "jitter_rms": jitter_rms,
+                "unc": unc,
+                "corr": corr,
+            })
 
-            if unc["residuals"] is not None:
-                if corr is not None and corr["residuals"] is not None:
-                    fft_freqs, fft_power = _compute_fft(corr["x_sorted"], corr["residuals"])
-                else:
-                    fft_freqs, fft_power = _compute_fft(unc["x_sorted"], unc["residuals"])
+        return records, plotdir
 
-                vib_path = self.view.plot_vibration_residuals(
-                    x_uncorrected=unc["x_sorted"],
-                    residuals_uncorrected=unc["residuals"],
-                    x_corrected=corr["x_sorted"] if corr else None,
-                    residuals_corrected=corr["residuals"] if corr else None,
-                    fft_freqs=fft_freqs,
-                    fft_power=fft_power,
-                    wire=wire,
-                    detector=det,
-                    plotdir=plotdir,
-                    stamp=stamp,
-                    show=self.show,
-                    save=self.save_plots,
-                )
-                if vib_path is not None:
-                    plot_paths.append(vib_path)
+    def jitter_compare(
+        self,
+        wire: str,
+        date: str,
+        limit: int | None = 10,
+        detector: str | None = None,
+    ) -> list[Path]:
+        """Side-by-side jitter-corrected and uncorrected Y profiles with Gaussian fits.
+
+        Args:
+            wire: Wire name to filter .h5 files by (e.g. "WS28444").
+            date: ISO date string (YYYY-MM-DD) identifying the data directory.
+            limit: Maximum number of scans to plot (most recent first).
+                Pass None to plot all matching scans.
+            detector: Detector override. If None, uses each file's default.
+
+        Returns:
+            List of Paths to saved plot PNGs.
+        """
+        records, plotdir = self._prepare_jitter_data(wire, date, limit, detector)
+        if not records:
+            return []
+
+        plot_paths: list[Path] = []
+        for rec in records:
+            unc, corr = rec["unc"], rec["corr"]
+            if rec["x_beam_corrected"] is None or corr is None:
+                continue
+
+            path = self.view.plot_jitter_compare(
+                x_uncorrected=rec["x_beam_uncorrected"],
+                x_corrected=rec["x_beam_corrected"],
+                detector_values=rec["detector_values"],
+                wire=rec["wire"],
+                detector=rec["detector"],
+                jitter_rms=rec["jitter_rms"],
+                fit_x_uncorrected=unc["fit_x"],
+                fit_curve_uncorrected=unc["fit_curve"],
+                fit_sigma_uncorrected=unc["fit_sigma"],
+                fit_x_corrected=corr["fit_x"],
+                fit_curve_corrected=corr["fit_curve"],
+                fit_sigma_corrected=corr["fit_sigma"],
+                plotdir=plotdir,
+                stamp=rec["stamp"],
+                show=self.show,
+                save=self.save_plots,
+            )
+            if path is not None:
+                plot_paths.append(path)
 
         print(f"Plotted {len(plot_paths)} jitter comparison(s) for {wire} on {date}")
+        return plot_paths
+
+    def residual_compare(
+        self,
+        wire: str,
+        date: str,
+        limit: int | None = 10,
+        detector: str | None = None,
+    ) -> list[Path]:
+        """Side-by-side uncorrected and jitter-corrected residual scatter plots.
+
+        Args:
+            wire: Wire name to filter .h5 files by (e.g. "WS28444").
+            date: ISO date string (YYYY-MM-DD) identifying the data directory.
+            limit: Maximum number of scans to plot (most recent first).
+                Pass None to plot all matching scans.
+            detector: Detector override. If None, uses each file's default.
+
+        Returns:
+            List of Paths to saved plot PNGs.
+        """
+        records, plotdir = self._prepare_jitter_data(wire, date, limit, detector)
+        if not records:
+            return []
+
+        plot_paths: list[Path] = []
+        for rec in records:
+            unc, corr = rec["unc"], rec["corr"]
+            if unc["residuals"] is None:
+                continue
+
+            path = self.view.plot_residual_compare(
+                x_uncorrected=unc["x_sorted"],
+                residuals_uncorrected=unc["residuals"],
+                x_corrected=corr["x_sorted"] if corr else None,
+                residuals_corrected=corr["residuals"] if corr else None,
+                wire=rec["wire"],
+                detector=rec["detector"],
+                plotdir=plotdir,
+                stamp=rec["stamp"],
+                show=self.show,
+                save=self.save_plots,
+            )
+            if path is not None:
+                plot_paths.append(path)
+
+        print(f"Plotted {len(plot_paths)} residual comparison(s) for {wire} on {date}")
+        return plot_paths
+
+    def fft_spectrum(
+        self,
+        wire: str,
+        date: str,
+        limit: int | None = 10,
+        detector: str | None = None,
+    ) -> list[Path]:
+        """FFT power spectrum of fit residuals.
+
+        Uses jitter-corrected residuals when available, otherwise uncorrected.
+
+        Args:
+            wire: Wire name to filter .h5 files by (e.g. "WS28444").
+            date: ISO date string (YYYY-MM-DD) identifying the data directory.
+            limit: Maximum number of scans to plot (most recent first).
+                Pass None to plot all matching scans.
+            detector: Detector override. If None, uses each file's default.
+
+        Returns:
+            List of Paths to saved plot PNGs.
+        """
+        records, plotdir = self._prepare_jitter_data(wire, date, limit, detector)
+        if not records:
+            return []
+
+        plot_paths: list[Path] = []
+        for rec in records:
+            unc, corr = rec["unc"], rec["corr"]
+            if unc["residuals"] is None:
+                continue
+
+            if corr is not None and corr["residuals"] is not None:
+                freqs, power = _compute_fft(corr["x_sorted"], corr["residuals"])
+            else:
+                freqs, power = _compute_fft(unc["x_sorted"], unc["residuals"])
+
+            path = self.view.plot_fft_spectrum(
+                fft_freqs=freqs,
+                fft_power=power,
+                wire=rec["wire"],
+                detector=rec["detector"],
+                plotdir=plotdir,
+                stamp=rec["stamp"],
+                show=self.show,
+                save=self.save_plots,
+            )
+            if path is not None:
+                plot_paths.append(path)
+
+        print(f"Plotted {len(plot_paths)} FFT spectrum(s) for {wire} on {date}")
         return plot_paths
 
     def vibration_summary(
@@ -228,10 +339,10 @@ class JitterCompareMixin:
 
             result = _fit_profile(x_beam, detector_values)
             if result["residuals"] is not None:
-                rms_values.append(float(np.std(result["residuals"])))
+                rms_values.append(round(float(np.std(result["residuals"])), 2))
 
-        mean_rms = float(np.mean(rms_values)) if rms_values else None
-        std_rms = float(np.std(rms_values)) if rms_values else None
+        mean_rms = round(float(np.mean(rms_values)), 2) if rms_values else None
+        std_rms = round(float(np.std(rms_values)), 2) if rms_values else None
 
         print(f"{wire}: mean vibration RMS = {mean_rms:.2f} ± {std_rms:.2f} ({len(rms_values)} scans)")
         return {
