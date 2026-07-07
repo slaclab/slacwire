@@ -364,7 +364,10 @@ class JitterCompareMixin:
         mean_rms = round(float(np.mean(rms_values)), 2) if rms_values else None
         std_rms = round(float(np.std(rms_values)), 2) if rms_values else None
 
-        print(f"{wire}: mean vibration RMS = {mean_rms:.2f} ± {std_rms:.2f} ({len(rms_values)} scans)")
+        if rms_values:
+            print(f"{wire}: mean vibration RMS = {mean_rms:.4f} ± {std_rms:.4f} ({len(rms_values)} scans)")
+        else:
+            print(f"{wire}: no valid scans with successful fits")
         return {
             "wire": wire,
             "n_scans": len(rms_values),
