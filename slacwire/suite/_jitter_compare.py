@@ -47,14 +47,14 @@ def _fit_profile(x_beam: np.ndarray, detector_values: np.ndarray) -> dict:
     }
 
 
-def _compute_fft(x: np.ndarray, residuals: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Compute FFT power spectrum of residuals interpolated onto a uniform grid.
+def _compute_fft(x: np.ndarray, residuals: np.ndarray, amplitude: float) -> tuple[np.ndarray, np.ndarray]:
+    """Compute FFT power spectrum of normalized residuals on a uniform grid.
 
-    Returns (freqs, power) arrays.
+    Returns (freqs, power) arrays where power is in fractional units (residuals / amplitude).
     """
     n = len(residuals)
     x_uniform = np.linspace(x.min(), x.max(), n)
-    resid_uniform = np.interp(x_uniform, x, residuals)
+    resid_uniform = np.interp(x_uniform, x, residuals) / amplitude
 
     step = (x.max() - x.min()) / (n - 1)
     freqs = np.fft.rfftfreq(n, d=step)
@@ -291,9 +291,9 @@ class JitterCompareMixin:
                 continue
 
             if corr is not None and corr["residuals"] is not None:
-                freqs, power = _compute_fft(corr["x_sorted"], corr["residuals"])
+                freqs, power = _compute_fft(corr["x_sorted"], corr["residuals"], corr["fit_amplitude"])
             else:
-                freqs, power = _compute_fft(unc["x_sorted"], unc["residuals"])
+                freqs, power = _compute_fft(unc["x_sorted"], unc["residuals"], unc["fit_amplitude"])
 
             path = self.view.plot_fft_spectrum(
                 fft_freqs=freqs,
@@ -361,8 +361,8 @@ class JitterCompareMixin:
             if result["residuals"] is not None and result["fit_amplitude"] is not None:
                 rms_values.append(round(float(np.std(result["residuals"])) / result["fit_amplitude"], 4))
 
-        mean_rms = round(float(np.mean(rms_values)), 2) if rms_values else None
-        std_rms = round(float(np.std(rms_values)), 2) if rms_values else None
+        mean_rms = round(float(np.mean(rms_values)), 4) if rms_values else None
+        std_rms = round(float(np.std(rms_values)), 4) if rms_values else None
 
         if rms_values:
             print(f"{wire}: mean vibration RMS = {mean_rms:.4f} ± {std_rms:.4f} ({len(rms_values)} scans)")
