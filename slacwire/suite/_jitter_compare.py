@@ -66,6 +66,7 @@ class JitterCompareMixin:
         self,
         wire: str,
         date: str,
+        profile: str = "y",
         limit: int | None = 10,
         detector: str | None = None,
     ) -> tuple[list[dict], Path]:
@@ -95,22 +96,31 @@ class JitterCompareMixin:
             if det is None:
                 det = getattr(meta, "rms_detector", None) or meta.default_detector
 
-            if "y" not in data.profiles:
+            if profile not in data.profiles:
                 continue
 
-            y_profile = data.profiles["y"]
-            x_stage = np.asarray(y_profile.positions)
-            detector_values = np.asarray(y_profile.detectors[det].values)
+            prof = data.profiles[profile]
+            x_stage = np.asarray(prof.positions)
+            detector_values = np.asarray(prof.detectors[det].values)
             install_angle = meta.install_angle
 
-            x_beam_uncorrected = stage_to_beam(x_stage, "y", install_angle)
+            x_beam_uncorrected = stage_to_beam(x_stage, profile, install_angle)
 
             try:
                 jitter_x, jitter_y = compute_jitter(
                     data.collection_result, meta.beampath, "BMAD"
                 )
-                jy = jitter_y[y_profile.profile_indices]
-                x_beam_corrected = x_beam_uncorrected - jy
+                if profile == "x":
+                    jitter_component = jitter_x[prof.profile_indices]
+                elif profile == "y":
+                    jitter_component = jitter_y[prof.profile_indices]
+                else:
+                    # u-wire at 45°: project jitter onto the diagonal axis
+                    jx = jitter_x[prof.profile_indices]
+                    jy = jitter_y[prof.profile_indices]
+                    jitter_component = (jx + jy) / np.sqrt(2)
+
+                x_beam_corrected = x_beam_uncorrected - jitter_component
                 jitter_rms = (float(np.std(jitter_x)), float(np.std(jitter_y)))
             except Exception:
                 x_beam_corrected = None
@@ -127,6 +137,7 @@ class JitterCompareMixin:
 
             records.append({
                 "wire": wire,
+                "profile": profile,
                 "detector": det,
                 "stamp": stamp,
                 "x_beam_uncorrected": x_beam_uncorrected,
@@ -143,14 +154,16 @@ class JitterCompareMixin:
         self,
         wire: str,
         date: str,
+        profile: str = "y",
         limit: int | None = 10,
         detector: str | None = None,
     ) -> list[Path]:
-        """Side-by-side jitter-corrected and uncorrected Y profiles with Gaussian fits.
+        """Side-by-side jitter-corrected and uncorrected profiles with Gaussian fits.
 
         Args:
             wire: Wire name to filter .h5 files by (e.g. "WS28444").
             date: ISO date string (YYYY-MM-DD) identifying the data directory.
+            profile: Profile plane to analyze ("x", "y", or "u").
             limit: Maximum number of scans to plot (most recent first).
                 Pass None to plot all matching scans.
             detector: Detector override. If None, uses each file's default.
@@ -158,7 +171,7 @@ class JitterCompareMixin:
         Returns:
             List of Paths to saved plot PNGs.
         """
-        records, plotdir = self._prepare_jitter_data(wire, date, limit, detector)
+        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector)
         if not records:
             return []
 
@@ -196,6 +209,7 @@ class JitterCompareMixin:
         self,
         wire: str,
         date: str,
+        profile: str = "y",
         limit: int | None = 10,
         detector: str | None = None,
     ) -> list[Path]:
@@ -204,6 +218,7 @@ class JitterCompareMixin:
         Args:
             wire: Wire name to filter .h5 files by (e.g. "WS28444").
             date: ISO date string (YYYY-MM-DD) identifying the data directory.
+            profile: Profile plane to analyze ("x", "y", or "u").
             limit: Maximum number of scans to plot (most recent first).
                 Pass None to plot all matching scans.
             detector: Detector override. If None, uses each file's default.
@@ -211,7 +226,7 @@ class JitterCompareMixin:
         Returns:
             List of Paths to saved plot PNGs.
         """
-        records, plotdir = self._prepare_jitter_data(wire, date, limit, detector)
+        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector)
         if not records:
             return []
 
@@ -243,6 +258,7 @@ class JitterCompareMixin:
         self,
         wire: str,
         date: str,
+        profile: str = "y",
         limit: int | None = 10,
         detector: str | None = None,
     ) -> list[Path]:
@@ -253,6 +269,7 @@ class JitterCompareMixin:
         Args:
             wire: Wire name to filter .h5 files by (e.g. "WS28444").
             date: ISO date string (YYYY-MM-DD) identifying the data directory.
+            profile: Profile plane to analyze ("x", "y", or "u").
             limit: Maximum number of scans to plot (most recent first).
                 Pass None to plot all matching scans.
             detector: Detector override. If None, uses each file's default.
@@ -260,7 +277,7 @@ class JitterCompareMixin:
         Returns:
             List of Paths to saved plot PNGs.
         """
-        records, plotdir = self._prepare_jitter_data(wire, date, limit, detector)
+        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector)
         if not records:
             return []
 
@@ -338,8 +355,8 @@ class JitterCompareMixin:
                 pass
 
             result = _fit_profile(x_beam, detector_values)
-            if result["residuals"] is not None:
-                rms_values.append(round(float(np.std(result["residuals"])), 2))
+            if result["residuals"] is not None and result["fit_sigma"] is not None:
+                rms_values.append(round(float(np.std(result["residuals"])) / result["fit_sigma"], 4))
 
         mean_rms = round(float(np.mean(rms_values)), 2) if rms_values else None
         std_rms = round(float(np.std(rms_values)), 2) if rms_values else None
