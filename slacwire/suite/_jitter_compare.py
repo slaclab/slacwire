@@ -47,6 +47,23 @@ def _fit_profile(x_beam: np.ndarray, detector_values: np.ndarray) -> dict:
     }
 
 
+def _highpass_residuals(x: np.ndarray, residuals: np.ndarray, cutoff: float = 0.005) -> np.ndarray:
+    """Remove low-frequency content (beam drift) from residuals via FFT filtering.
+
+    cutoff is in 1/µm — frequencies below this are zeroed.
+    """
+    n = len(residuals)
+    x_uniform = np.linspace(x.min(), x.max(), n)
+    resid_uniform = np.interp(x_uniform, x, residuals)
+
+    step = (x.max() - x.min()) / (n - 1)
+    freqs = np.fft.rfftfreq(n, d=step)
+    spectrum = np.fft.rfft(resid_uniform)
+    spectrum[freqs < cutoff] = 0
+    filtered_uniform = np.fft.irfft(spectrum, n=n)
+    return np.interp(x, x_uniform, filtered_uniform)
+
+
 def _compute_fft(x: np.ndarray, residuals: np.ndarray, amplitude: float) -> tuple[np.ndarray, np.ndarray]:
     """Compute FFT power spectrum of normalized residuals on a uniform grid.
 
@@ -359,7 +376,8 @@ class JitterCompareMixin:
 
             result = _fit_profile(x_beam, detector_values)
             if result["residuals"] is not None and result["fit_amplitude"] is not None:
-                rms_values.append(round(float(np.std(result["residuals"])) / result["fit_amplitude"], 4))
+                filtered = _highpass_residuals(result["x_sorted"], result["residuals"])
+                rms_values.append(round(float(np.std(filtered)) / result["fit_amplitude"], 4))
 
         mean_rms = round(float(np.mean(rms_values)), 4) if rms_values else None
         std_rms = round(float(np.std(rms_values)), 4) if rms_values else None
