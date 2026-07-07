@@ -26,7 +26,7 @@ def _fit_profile(x_beam: np.ndarray, detector_values: np.ndarray) -> dict:
         fit_params = {k: v for k, v in fp.items() if k != "error"}
         fit_curve = gaussian.curve(x=fit_x, **fit_params)
         fit_sigma = fp["sigma"]
-        fit_amplitude = fp["amplitude"]
+        fit_amplitude = fp["amp"]
         fit_at_data = gaussian.curve(x=x_sorted, **fit_params)
         residuals = y_sorted - fit_at_data
     except Exception:
