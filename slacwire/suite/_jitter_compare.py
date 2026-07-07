@@ -26,12 +26,14 @@ def _fit_profile(x_beam: np.ndarray, detector_values: np.ndarray) -> dict:
         fit_params = {k: v for k, v in fp.items() if k != "error"}
         fit_curve = gaussian.curve(x=fit_x, **fit_params)
         fit_sigma = fp["sigma"]
+        fit_amplitude = fp["amplitude"]
         fit_at_data = gaussian.curve(x=x_sorted, **fit_params)
         residuals = y_sorted - fit_at_data
     except Exception:
         fit_x = None
         fit_curve = None
         fit_sigma = None
+        fit_amplitude = None
         residuals = None
 
     return {
@@ -40,6 +42,7 @@ def _fit_profile(x_beam: np.ndarray, detector_values: np.ndarray) -> dict:
         "fit_x": fit_x,
         "fit_curve": fit_curve,
         "fit_sigma": fit_sigma,
+        "fit_amplitude": fit_amplitude,
         "residuals": residuals,
     }
 
@@ -355,8 +358,8 @@ class JitterCompareMixin:
                 pass
 
             result = _fit_profile(x_beam, detector_values)
-            if result["residuals"] is not None and result["fit_sigma"] is not None:
-                rms_values.append(round(float(np.std(result["residuals"])) / result["fit_sigma"], 4))
+            if result["residuals"] is not None and result["fit_amplitude"] is not None:
+                rms_values.append(round(float(np.std(result["residuals"])) / result["fit_amplitude"], 4))
 
         mean_rms = round(float(np.mean(rms_values)), 2) if rms_values else None
         std_rms = round(float(np.std(rms_values)), 2) if rms_values else None
