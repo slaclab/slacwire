@@ -652,3 +652,34 @@ class WireScanView:
         if show:
             fig.show()
         return path
+
+    def plot_fft_overlay(
+        self,
+        spectra: list[tuple[np.ndarray, np.ndarray, str]],
+        wire: str,
+        detector: str,
+        plotdir: Path,
+        show: bool = True,
+        save: bool = True,
+    ) -> Path | None:
+        """All FFT spectra for a wire overlaid on one plot."""
+        fig = plt.figure(figsize=(10, 6))
+        ax = fig.add_subplot(1, 1, 1)
+
+        for freqs, power, stamp in spectra:
+            ax.plot(freqs[1:], power[1:], linewidth=0.8, alpha=0.7, label=stamp)
+
+        ax.set_xlabel("Spatial Frequency (1/µm)")
+        ax.set_ylabel("Power")
+        ax.set_title(f"{wire} FFT Power Spectra ({detector}) — {len(spectra)} scans")
+        ax.grid(True, which="both", linestyle="--", alpha=0.6)
+        ax.legend(fontsize=7)
+
+        fig.tight_layout()
+
+        path = None
+        if save:
+            path = self.save_fig(fig, f"FFT_overlay_{wire}", plotdir, "overlay")
+        if show:
+            fig.show()
+        return path

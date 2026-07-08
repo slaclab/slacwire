@@ -311,6 +311,56 @@ class JitterCompareMixin:
         print(f"Plotted {len(plot_paths)} FFT spectrum(s) for {wire} on {date}")
         return plot_paths
 
+    def fft_overlay(
+        self,
+        wire: str,
+        date: str,
+        profile: str = "y",
+        limit: int | None = 10,
+        detector: str | None = None,
+    ) -> Path | None:
+        """All FFT spectra for a wire overlaid on one plot.
+
+        Args:
+            wire: Wire name to filter .h5 files by (e.g. "WS28444").
+            date: ISO date string (YYYY-MM-DD) identifying the data directory.
+            profile: Profile plane to analyze ("x", "y", or "u").
+            limit: Maximum number of scans to plot (most recent first).
+                Pass None to plot all matching scans.
+            detector: Detector override. If None, uses each file's default.
+
+        Returns:
+            Path to saved plot PNG, or None.
+        """
+        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector)
+        if not records:
+            return None
+
+        spectra: list[tuple[np.ndarray, np.ndarray, str]] = []
+        for rec in records:
+            unc, corr = rec["unc"], rec["corr"]
+            if unc["residuals"] is None:
+                continue
+
+            if corr is not None and corr["residuals"] is not None:
+                freqs, power = _compute_fft(corr["x_sorted"], corr["residuals"], corr["fit_amplitude"])
+            else:
+                freqs, power = _compute_fft(unc["x_sorted"], unc["residuals"], unc["fit_amplitude"])
+
+            spectra.append((freqs, power, rec["stamp"]))
+
+        if not spectra:
+            return None
+
+        return self.view.plot_fft_overlay(
+            spectra=spectra,
+            wire=wire,
+            detector=records[0]["detector"],
+            plotdir=plotdir,
+            show=self.show,
+            save=self.save_plots,
+        )
+
     def vibration_summary(
         self,
         wire: str,
