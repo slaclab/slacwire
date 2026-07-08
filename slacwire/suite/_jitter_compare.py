@@ -58,7 +58,7 @@ def _compute_fft(x: np.ndarray, residuals: np.ndarray, amplitude: float) -> tupl
 
     step = (x.max() - x.min()) / (n - 1)
     freqs = np.fft.rfftfreq(n, d=step)
-    power = np.abs(np.fft.rfft(resid_uniform)) ** 2 / n
+    power = np.abs(np.fft.rfft(resid_uniform)) ** 2
     return freqs, power
 
 
