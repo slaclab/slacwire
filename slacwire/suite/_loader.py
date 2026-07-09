@@ -27,6 +27,7 @@ class LoaderMixin:
         wire: str,
         date: str,
         limit: int | None = 10,
+        subdir: str | None = None,
     ) -> list:
         """Discover and load .h5 scans for a wire on a given date.
 
@@ -38,6 +39,7 @@ class LoaderMixin:
             date: ISO date string (YYYY-MM-DD).
             limit: Maximum results to return (most recent first).
                 Pass None to return all matching scans.
+            subdir: Optional subdirectory within the dated folder to search.
 
         Returns:
             List of WireMeasurementAnalysisResult, sorted by timestamp descending.
@@ -47,11 +49,12 @@ class LoaderMixin:
         dt = datetime.strptime(date, "%Y-%m-%d")
         day_dir = Path(_BASE_DIR) / f"{dt:%Y}" / f"{dt:%m}" / f"{dt:%d}"
 
-        if not day_dir.exists():
+        scan_dir = day_dir / subdir if subdir else day_dir
+        if not scan_dir.exists():
             return []
 
         candidates: list[tuple[datetime, object]] = []
-        for h5_path in sorted(day_dir.glob("*.h5")):
+        for h5_path in sorted(scan_dir.glob("*.h5")):
             try:
                 data = load_from_h5(str(h5_path))
             except Exception:

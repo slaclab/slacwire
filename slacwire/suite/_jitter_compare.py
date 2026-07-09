@@ -72,6 +72,7 @@ class JitterCompareMixin:
         profile: str = "y",
         limit: int | None = 10,
         detector: str | None = None,
+        subdir: str | None = None,
     ) -> tuple[list[dict], Path]:
         """Load scans and compute jitter correction, fits, and FFT for each.
 
@@ -81,7 +82,7 @@ class JitterCompareMixin:
         from slac_measurements.wires.coordinates import stage_to_beam
         from slac_measurements.wires.jitter_correction import compute_jitter
 
-        scans = self.discover_scans(wire, date, limit)
+        scans = self.discover_scans(wire, date, limit, subdir=subdir)
         if not scans:
             print(f"No .h5 files found for {wire} on {date}")
             return [], Path()
@@ -160,6 +161,7 @@ class JitterCompareMixin:
         profile: str = "y",
         limit: int | None = 10,
         detector: str | None = None,
+        subdir: str | None = None,
     ) -> list[Path]:
         """Side-by-side jitter-corrected and uncorrected profiles with Gaussian fits.
 
@@ -174,7 +176,7 @@ class JitterCompareMixin:
         Returns:
             List of Paths to saved plot PNGs.
         """
-        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector)
+        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector, subdir=subdir)
         if not records:
             return []
 
@@ -215,6 +217,7 @@ class JitterCompareMixin:
         profile: str = "y",
         limit: int | None = 10,
         detector: str | None = None,
+        subdir: str | None = None,
     ) -> list[Path]:
         """Side-by-side uncorrected and jitter-corrected residual scatter plots.
 
@@ -229,7 +232,7 @@ class JitterCompareMixin:
         Returns:
             List of Paths to saved plot PNGs.
         """
-        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector)
+        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector, subdir=subdir)
         if not records:
             return []
 
@@ -264,6 +267,7 @@ class JitterCompareMixin:
         profile: str = "y",
         limit: int | None = 10,
         detector: str | None = None,
+        subdir: str | None = None,
     ) -> list[Path]:
         """FFT power spectrum of fit residuals.
 
@@ -280,7 +284,7 @@ class JitterCompareMixin:
         Returns:
             List of Paths to saved plot PNGs.
         """
-        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector)
+        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector, subdir=subdir)
         if not records:
             return []
 
@@ -318,6 +322,7 @@ class JitterCompareMixin:
         profile: str = "y",
         limit: int | None = 10,
         detector: str | None = None,
+        subdir: str | None = None,
     ) -> Path | None:
         """All FFT spectra for a wire overlaid on one plot.
 
@@ -332,7 +337,7 @@ class JitterCompareMixin:
         Returns:
             Path to saved plot PNG, or None.
         """
-        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector)
+        records, plotdir = self._prepare_jitter_data(wire, date, profile, limit, detector, subdir=subdir)
         if not records:
             return None
 
@@ -367,6 +372,7 @@ class JitterCompareMixin:
         date: str,
         limit: int | None = 10,
         detector: str | None = None,
+        subdir: str | None = None,
     ) -> dict:
         """Compute vibration RMS across scans for quantitative wire comparison.
 
@@ -375,7 +381,7 @@ class JitterCompareMixin:
         from slac_measurements.wires.coordinates import stage_to_beam
         from slac_measurements.wires.jitter_correction import compute_jitter
 
-        scans = self.discover_scans(wire, date, limit)
+        scans = self.discover_scans(wire, date, limit, subdir=subdir)
         if not scans:
             print(f"No .h5 files found for {wire} on {date}")
             return {"wire": wire, "n_scans": 0, "rms_values": [], "mean_rms": None, "std_rms": None}
