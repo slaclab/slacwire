@@ -679,7 +679,8 @@ class WireScanView:
 
         path = None
         if save:
-            path = self.save_fig(fig, f"FFT_overlay_{wire}", plotdir, "overlay")
+            stamp = spectra[0][2]
+            path = self.save_fig(fig, f"FFT_overlay_{wire}", plotdir, stamp)
         if show:
             fig.show()
         return path
