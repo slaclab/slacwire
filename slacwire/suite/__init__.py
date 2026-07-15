@@ -2,10 +2,14 @@
 
 This sub-package composes WireScanSuite from separate concern modules:
 - _base: dataclass fields and infrastructure
+- _constants: beampath/wire lookups and path helpers
 - _motion: beam-less motion validation
 - _collect: raw data collection (no analysis)
 - _run: measurement execution (collection + analysis)
 - _results: result queries and display
+- _loader: load previously saved .h5 scan files
+- _diagnostics: CA cache inspection utilities
+- _jitter_compare: jitter correction comparison and FFT analysis
 """
 
 from __future__ import annotations
@@ -61,7 +65,8 @@ class WireScanSuite(JitterCompareMixin, DiagnosticsMixin, MotionTestMixin, Colle
         wires: Wire names (e.g., "WS28144")
         devices: Cached wire device instances created via create_wire()
         beampath: Accelerator beampath identifier (e.g., "CU_HXR", "SC_BSYD")
-        detector: Primary detector for measurements (e.g., "PMT29150")
+        detector: Primary detector override for measurements (e.g., "PMT29150").
+            Defaults to None, in which case each device's default detector is used.
         outdir: Output directory for HDF5 data files
         plotdir: Output directory for PNG plot files
         results: Dict storing measurement results keyed by wire name
@@ -69,6 +74,9 @@ class WireScanSuite(JitterCompareMixin, DiagnosticsMixin, MotionTestMixin, Colle
         save: If ``True``, write HDF5 data files after each scan.
         show: If ``True``, call ``fig.show()`` on each generated plot.
         save_plots: If ``True``, write PNG plot files after each scan.
+        dev_mode: If ``True``, scan failures are not logged to the run registry.
+            Successes are still logged normally. Useful during testing/debugging.
+        view: WireScanView instance used for all plotting operations.
     """
 
     pass

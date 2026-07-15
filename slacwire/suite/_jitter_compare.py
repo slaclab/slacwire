@@ -11,8 +11,9 @@ from ._constants import _BASE_DIR
 def _fit_profile(x_beam: np.ndarray, detector_values: np.ndarray) -> dict:
     """Fit a Gaussian to a profile and return fit curve data plus residuals.
 
-    Returns dict with keys: x_sorted, y_sorted, fit_x, fit_curve, fit_sigma, residuals.
-    All values are None (except x_sorted/y_sorted) if the fit fails.
+    Returns dict with keys: x_sorted, y_sorted, fit_x, fit_curve, fit_sigma,
+    fit_amplitude, residuals. All values are None (except x_sorted/y_sorted)
+    if the fit fails.
     """
     from slac_measurements.fitting import gaussian
 
@@ -63,7 +64,10 @@ def _compute_fft(x: np.ndarray, residuals: np.ndarray, amplitude: float) -> tupl
 
 
 class JitterCompareMixin:
-    """Compare Y profiles with and without jitter correction from stored data."""
+    """Compare profiles with and without jitter correction from stored data.
+
+    Supports x, y, and u profile planes.
+    """
 
     def _prepare_jitter_data(
         self,
@@ -172,6 +176,8 @@ class JitterCompareMixin:
             limit: Maximum number of scans to plot (most recent first).
                 Pass None to plot all matching scans.
             detector: Detector override. If None, uses each file's default.
+            subdir: Optional subdirectory name within the date folder to
+                search for .h5 files.
 
         Returns:
             List of Paths to saved plot PNGs.
@@ -228,6 +234,8 @@ class JitterCompareMixin:
             limit: Maximum number of scans to plot (most recent first).
                 Pass None to plot all matching scans.
             detector: Detector override. If None, uses each file's default.
+            subdir: Optional subdirectory name within the date folder to
+                search for .h5 files.
 
         Returns:
             List of Paths to saved plot PNGs.
@@ -280,6 +288,8 @@ class JitterCompareMixin:
             limit: Maximum number of scans to plot (most recent first).
                 Pass None to plot all matching scans.
             detector: Detector override. If None, uses each file's default.
+            subdir: Optional subdirectory name within the date folder to
+                search for .h5 files.
 
         Returns:
             List of Paths to saved plot PNGs.
@@ -333,6 +343,8 @@ class JitterCompareMixin:
             limit: Maximum number of scans to plot (most recent first).
                 Pass None to plot all matching scans.
             detector: Detector override. If None, uses each file's default.
+            subdir: Optional subdirectory name within the date folder to
+                search for .h5 files.
 
         Returns:
             Path to saved plot PNG, or None.
@@ -376,7 +388,17 @@ class JitterCompareMixin:
     ) -> dict:
         """Compute vibration RMS across scans for quantitative wire comparison.
 
-        Returns dict with keys: wire, n_scans, rms_values, mean_rms, std_rms.
+        Args:
+            wire: Wire name to filter .h5 files by (e.g. "WS28444").
+            date: ISO date string (YYYY-MM-DD) identifying the data directory.
+            limit: Maximum number of scans to include (most recent first).
+                Pass None to use all matching scans.
+            detector: Detector override. If None, uses each file's default.
+            subdir: Optional subdirectory name within the date folder to
+                search for .h5 files.
+
+        Returns:
+            Dict with keys: wire, n_scans, rms_values, mean_rms, std_rms.
         """
         from slac_measurements.wires.coordinates import stage_to_beam
         from slac_measurements.wires.jitter_correction import compute_jitter

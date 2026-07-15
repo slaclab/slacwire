@@ -128,7 +128,11 @@ class RunMixin:
         rms_detector: str | None,
         file_prefix: str,
     ):
-        """Execute common scan flow for a single device and method."""
+        """Execute common scan flow for a single device and method.
+
+        When ``dev_mode`` is enabled on the suite, scan failures are still
+        raised but are not logged to the run registry.
+        """
         scan_started = datetime.now()
         run_stamp = scan_started.strftime("%Y%m%d_%H%M%S")
         default_detector = device.metadata.default_detector

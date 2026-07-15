@@ -17,7 +17,9 @@ class DiagnosticsMixin:
             context: Current CA context ID (or None)
             pv_cache_total: Total entries in the global PV object cache
             channel_cache_total: Total entries in the context's channel cache
-            per_device: Dict mapping wire name -> count of matching PV cache entries
+            per_device: Dict mapping wire name -> count of matching PV cache
+                entries. Also contains "EDEF" and "BSA" keys with counts of
+                PVs matching those subsystems.
         """
         ctx = epics.ca.current_context()
         context_cache = epics.ca._cache.get(ctx, {}) if ctx is not None else {}
@@ -44,8 +46,9 @@ class DiagnosticsMixin:
         """Return actual PV names in the cache, grouped by device.
 
         Returns a dict mapping wire name -> sorted list of cached PV names.
-        An additional key "_unmatched" contains PVs that don't match any
-        configured wire device.
+        Additional keys "EDEF" and "BSA" group PVs belonging to those
+        subsystems. "_unmatched" contains PVs that don't match any configured
+        wire device or subsystem.
         """
         ctx = epics.ca.current_context()
         context_cache = epics.ca._cache.get(ctx, {}) if ctx is not None else {}
@@ -81,7 +84,7 @@ class DiagnosticsMixin:
         return {k: sorted(v) for k, v in grouped.items()}
 
     def cache_summary(self) -> None:
-        """Print and return a formatted summary of CA cache state."""
+        """Print a formatted summary of CA cache state."""
         info = self.cache_info()
 
         lines = [

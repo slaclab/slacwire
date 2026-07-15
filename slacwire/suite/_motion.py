@@ -24,6 +24,9 @@ class MotionTestMixin:
             scan_mode: "otf" (on-the-fly) or "step". Default "otf".
             plot: If True, display trajectory plot of motor position vs scan
                 point. Also saves PNG if suite.save_plots is True.
+
+        Returns:
+            The motion test result object from the scan.
         """
         mode = scan_mode.lower()
         if mode not in _MOTION_TEST_FNS:

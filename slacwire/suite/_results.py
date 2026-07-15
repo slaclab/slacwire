@@ -9,6 +9,13 @@ class ResultsMixin:
 
         Args:
             wire: Wire name to look up in stored results.
+
+        Returns:
+            The most recent WireMeasurementAnalysisResult (or collection-only
+            result) for the wire.
+
+        Raises:
+            KeyError: If no results exist for the given wire.
         """
         runs = self.results.get(wire, [])
         if not runs:
@@ -23,6 +30,9 @@ class ResultsMixin:
             wire: Wire name whose latest result will be re-plotted.
             detector: Detector for profile plots. If None, uses the detector
                 recorded in the run metadata.
+
+        Returns:
+            List of Paths to saved plot PNGs.
         """
         data = self.latest_run(wire)
         if detector is None:
