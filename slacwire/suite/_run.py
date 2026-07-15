@@ -179,18 +179,19 @@ class RunMixin:
                 plots=plot_paths,
             )
         except Exception as e:
-            scope_data = self._resolve_scope_data_path(
-                wire=device.name,
-                method=method,
-                since=scan_started,
-            )
-            self.registry.log(
-                method=method,
-                wire=device.name,
-                beampath=self.beampath,
-                detector=selected_detector,
-                scope_data=scope_data,
-                status="error",
-                error=str(e),
-            )
+            if not self.dev_mode:
+                scope_data = self._resolve_scope_data_path(
+                    wire=device.name,
+                    method=method,
+                    since=scan_started,
+                )
+                self.registry.log(
+                    method=method,
+                    wire=device.name,
+                    beampath=self.beampath,
+                    detector=selected_detector,
+                    scope_data=scope_data,
+                    status="error",
+                    error=str(e),
+                )
             raise

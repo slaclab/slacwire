@@ -30,6 +30,7 @@ class WireScanSuiteBase:
     save: bool = True
     show: bool = True
     save_plots: bool = True
+    dev_mode: bool = False
     results: dict = field(default_factory=dict)
     registry: RunRegistry = field(default_factory=RunRegistry)
     view: "WireScanView" = field(init=False)  # type: ignore[assignment]
