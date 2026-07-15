@@ -69,6 +69,42 @@ class TestRunRegistry(unittest.TestCase):
             entry = registry.log(method="otf", wire="WS28144", beampath="CU_HXR")
             self.assertEqual(entry["run_id"], 1)
 
+    def test_error_message_is_prefixed_with_wire_when_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "registry.json"
+            registry = RunRegistry(path=path)
+
+            entry = registry.log(
+                method="otf",
+                wire="WS28144",
+                beampath="CU_HXR",
+                status="error",
+                error="scan did not reach expected position",
+            )
+
+            self.assertEqual(
+                entry["error"],
+                "WS28144: scan did not reach expected position",
+            )
+
+    def test_error_message_keeps_existing_wire_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "registry.json"
+            registry = RunRegistry(path=path)
+
+            entry = registry.log(
+                method="otf",
+                wire="WS28144",
+                beampath="CU_HXR",
+                status="error",
+                error="WS28144 did not reach position 120 after 10s.",
+            )
+
+            self.assertEqual(
+                entry["error"],
+                "WS28144 did not reach position 120 after 10s.",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

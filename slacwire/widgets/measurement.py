@@ -37,7 +37,6 @@ class MeasurementWidget(QGroupBox):
         self.detector_combo = QComboBox()
         self.bpm_list = QListWidget()
         self.jitter_checkbox = QCheckBox("Apply Jitter Correction")
-        self.jitter_checkbox.setEnabled(False)
         self.charge_checkbox = QCheckBox("Normalize by Charge")
         self.charge_checkbox.setEnabled(False)
 
@@ -80,6 +79,10 @@ class MeasurementWidget(QGroupBox):
         self.detector_combo.blockSignals(True)
         self.detector_combo.clear()
 
+        if self.my_wire is None:
+            self.detector_combo.blockSignals(False)
+            return
+
         detectors = getattr(self.my_wire.metadata, "detectors", [])
         for detector_string in detectors:
             detector, area = detector_string.split(":")
@@ -91,9 +94,13 @@ class MeasurementWidget(QGroupBox):
         self.bpm_list.blockSignals(True)
         self.bpm_list.clear()
 
-        bpms = getattr(self.my_wire.metadata, "bpms_before_wire", [])
-        if bpms:
-            for bpm in bpms:
+        if self.my_wire is None:
+            self.bpm_list.blockSignals(False)
+            return
+
+        jitter_bpms = getattr(self.my_wire.metadata, "jitter_bpms", None)
+        if jitter_bpms:
+            for bpm in jitter_bpms:
                 self.bpm_list.addItem(bpm)
 
         self.bpm_list.blockSignals(False)

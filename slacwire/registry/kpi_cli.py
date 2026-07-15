@@ -7,14 +7,20 @@ import json
 import tempfile
 from datetime import date, datetime
 from pathlib import Path
+import re
 from typing import Any
 
-from .kpi_queries import RunRegistryKPIReporter
-from .registry_sqlite import convert_run_registry_json_to_sqlite
+try:
+    from .kpi_queries import RunRegistryKPIReporter
+    from .registry_sqlite import convert_run_registry_json_to_sqlite
+except ImportError:  # pragma: no cover - direct script execution fallback
+    from kpi_queries import RunRegistryKPIReporter
+    from registry_sqlite import convert_run_registry_json_to_sqlite
 
 DEFAULT_PRODUCTION_JSON_PATH = Path(
     "/u1/lcls/physics/data/wire_scan/ws_run_registry.json"
 )
+DEFAULT_OUTPUT_BASE_DIR = Path("~/kabanaty/sandbox/ws_kpi_report").expanduser()
 
 
 def _previous_month_bounds(today: date | None = None) -> tuple[str, str]:
@@ -86,6 +92,15 @@ def _write_bundle(bundle: dict[str, Any], output_dir: str | Path) -> None:
         section_path.write_text(json.dumps(value, indent=2), encoding="utf-8")
 
 
+def _resolve_output_dir(output_dir: str | Path, today: date | None = None) -> Path:
+    """Return a dated output path under the provided base directory."""
+    base = Path(output_dir)
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", base.name):
+        return base
+    run_date = (today or date.today()).isoformat()
+    return base / run_date
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse CLI options for KPI report generation."""
     parser = argparse.ArgumentParser(
@@ -128,7 +143,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         default=None,
-        help="Optional directory to write JSON artifacts. If omitted, prints bundle JSON to stdout.",
+        help=(
+            "Base directory to write JSON artifacts. Results are written "
+            "to a dated subdirectory (YYYY-MM-DD). Defaults to "
+            f"{DEFAULT_OUTPUT_BASE_DIR}."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -188,10 +207,10 @@ def main(argv: list[str] | None = None) -> int:
                     cutoff_date=cutoff_date,
                 )
 
-    if args.output_dir:
-        _write_bundle(bundle, args.output_dir)
-    else:
-        print(json.dumps(bundle, indent=2))
+    output_base_dir = args.output_dir or DEFAULT_OUTPUT_BASE_DIR
+    resolved_output_dir = _resolve_output_dir(output_base_dir)
+    _write_bundle(bundle, resolved_output_dir)
+    print(str(resolved_output_dir))
 
     return 0
 

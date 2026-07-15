@@ -16,14 +16,26 @@ slacwire/
 	pyproject.toml
 	slacwire/
 		__init__.py
-		suite.py          # Controller/orchestration
-		view.py           # View/plot rendering
+		suite/                # Controller/orchestration (mixin-based)
+			__init__.py       # Exports WireScanSuite (composed dataclass)
+			_base.py          # Dataclass fields, device management, infrastructure
+			_run.py           # run_single, run_all scan execution
+			_collect.py       # collect_single (raw data, no analysis)
+			_motion.py        # Beam-less motion validation tests
+			_results.py       # Result queries, display, and caching
+			_diagnostics.py   # EPICS CA cache inspection
+			_constants.py     # WIRE_AREA_LOOKUP, Beampath type, paths
+		view.py               # View/plot rendering
+		otf_motion_test.py    # OTF motion integration test
+		step_motion_test.py   # Step motion integration test
 		registry/
-			registry.py     # Registry persistence
+			registry.py       # Registry persistence
 			registry_sqlite.py
 			kpi_queries.py
 			kpi_cli.py
-		ws_gui.py         # GUI composition and wiring
+			kpi_daily_summary.py
+			log_run_cli.py
+		ws_gui.py             # GUI composition and wiring
 		wire_scan_gui.ui
 		wire_scan_gui.yaml
 		widgets/
@@ -90,7 +102,8 @@ This keeps scan execution logic independent from plotting implementation and fil
 
 ## Development Tips
 
-- Keep controller logic in `suite.py` and avoid embedding matplotlib logic there.
+- Keep controller logic in the `suite/` sub-package and avoid embedding matplotlib logic there.
+- Add new suite behavior as a new mixin file (`suite/_<feature>.py`) rather than expanding existing modules.
 - Put rendering and figure composition changes in `view.py`.
 - Keep JSON registry and run logging concerns in `registry/registry.py`.
 - Prefer relative imports within the `slacwire` package.

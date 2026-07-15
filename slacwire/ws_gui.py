@@ -1,23 +1,24 @@
 import importlib
 import logging
+import traceback
 from datetime import datetime
 from pathlib import Path
 
 import yaml
 from pydm import Display
 from PyQt5.QtCore import QThread, pyqtSignal
-from qtpy.QtWidgets import QFileDialog, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QWidget
 
-from .widgets.measurement import MeasurementWidget, extract_measurement_data
-from .widgets.navigation import NavigationWidget
-from .widgets.plots import PlotWidget
-from .widgets.text_logger import attach_logger_to_widget
-from .suite import WireScanSuite
+from slacwire.widgets.measurement import MeasurementWidget, extract_measurement_data
+from slacwire.widgets.navigation import NavigationWidget
+from slacwire.widgets.plots import PlotWidget
+from slacwire.widgets.text_logger import attach_logger_to_widget
+from slacwire.suite import WireScanSuite
 
 
 class WireScanSuiteThread(QThread):
     scan_complete = pyqtSignal(str, str, object, dict)
-    scan_failed = pyqtSignal(str, str)
+    scan_failed = pyqtSignal(str, str, str)
 
     def __init__(
         self,
@@ -25,22 +26,24 @@ class WireScanSuiteThread(QThread):
         wire_identifier: str,
         beampath: str,
         detector: str,
+        jitter_correction: bool = False,
     ):
         super().__init__()
         self.suite = suite
         self.wire_identifier = wire_identifier
         self.beampath = beampath
         self.detector = detector
+        self.jitter_correction = jitter_correction
 
     def run(self):
         try:
             # Extract wire name from identifier (format: "WIRE:AREA")
             wire_name = self.wire_identifier.split(":")[0]
-            
+
             # Set beampath and detector on suite
             self.suite.beampath = self.beampath
             self.suite.detector = self.detector
-            
+
             # Use suite's orchestrated run_single() method which handles:
             # - Device creation/caching
             # - Execution of OTF or step scan
@@ -48,8 +51,9 @@ class WireScanSuiteThread(QThread):
             self.suite.run_single(
                 wire=wire_name,
                 scan_mode="otf",            # Force OTF mode for testing! 4/14/26
+                jitter_correction=self.jitter_correction,
             )
-            
+
             # Retrieve the latest run data and entry from registry
             try:
                 data = self.suite.latest_run(wire_name)
@@ -57,24 +61,26 @@ class WireScanSuiteThread(QThread):
                 # No results were produced
                 self.scan_failed.emit(
                     self.wire_identifier,
-                    f"No data returned from scan for {wire_name}"
+                    f"No data returned from scan for {wire_name}",
+                    "",
                 )
                 return
-            
+
             # Find the corresponding entry in run_registry (most recent for this wire)
             entry = None
             for reg_entry in reversed(self.suite.registry.entries):
                 if reg_entry.get("wire") == wire_name:
                     entry = reg_entry
                     break
-            
+
             if entry is None:
                 entry = {"wire": wire_name, "timestamp": datetime.now().isoformat()}
-            
+
             method = entry.get("method", "unknown")
             self.scan_complete.emit(wire_name, method, data, entry)
         except Exception as exc:
-            self.scan_failed.emit(self.wire_identifier, str(exc))
+            tb = traceback.format_exc()
+            self.scan_failed.emit(self.wire_identifier, str(exc), tb)
 
 
 class WireScanSuiteGUI(Display):
@@ -103,6 +109,9 @@ class WireScanSuiteGUI(Display):
         self.measurement.wireChanged.connect(self.update_plots)
         self.measurement.detectorChanged.connect(self._on_detector_changed)
         self.measurement.detectorChanged.connect(self.update_plots)
+        self.measurement.jitter_checkbox.stateChanged.connect(
+            self._on_jitter_toggled
+        )
         self.dataChanged.connect(self.update_plots)
         self.plots.profile_control.profileChanged.connect(
             self.update_profile_plot
@@ -189,7 +198,26 @@ class WireScanSuiteGUI(Display):
         if detector:
             self.suite.detector = detector
 
+    def _on_jitter_toggled(self, state: int):
+        wire = self.measurement.wire
+        data = self._latest_result_for_wire(wire)
+        if data is None or not hasattr(data, "reanalyze"):
+            return
+
+        jitter_on = state != 0
+        new_data = data.reanalyze(jitter_correction=jitter_on)
+
+        if wire in self.suite.results and self.suite.results[wire]:
+            self.suite.results[wire][-1] = new_data
+        elif wire in self.loaded_results:
+            self.loaded_results[wire] = new_data
+
+        self.dataChanged.emit()
+
     def update_parameters(self):
+        if self.measurement.active_wire is None:
+            return
+
         children = self.ui.ParametersGroupBox.findChildren(QWidget)
         for child in children:
             name = child.objectName()
@@ -219,6 +247,7 @@ class WireScanSuiteGUI(Display):
             wire_identifier=wire_identifier,
             beampath=self.nav.beampath,
             detector=self.measurement.detector or self.suite.detector,
+            jitter_correction=self.measurement.jitter_enabled,
         )
         self.thread.scan_complete.connect(self.on_scan_complete)
         self.thread.scan_failed.connect(self.on_scan_failure)
@@ -239,8 +268,8 @@ class WireScanSuiteGUI(Display):
         )
         self.dataChanged.emit()
 
-    def on_scan_failure(self, wire_identifier: str, message: str):
-        self.ui.startButton.setEnabled(True)
+    def on_scan_failure(self, wire_identifier: str, message: str, tb: str):
+        self.ui.startButton.setEnabled(False)
         wire_name = wire_identifier.split(":")[0]
         self.suite.registry.log(
             method="unknown",
@@ -254,6 +283,17 @@ class WireScanSuiteGUI(Display):
             wire_identifier,
             message,
         )
+
+        dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Critical)
+        dialog.setWindowTitle("Scan Failed")
+        dialog.setText(f"Scan failed for {wire_identifier}")
+        dialog.setInformativeText(message)
+        if tb:
+            dialog.setDetailedText(tb)
+        dialog.setStandardButtons(QMessageBox.Ok)
+        dialog.exec_()
+        self.ui.startButton.setEnabled(True)
 
     def _latest_result_for_wire(self, wire_name: str):
         # Check if we have results for this wire in the suite
@@ -279,14 +319,14 @@ class WireScanSuiteGUI(Display):
             self.logger.info("Data saved to %s", path)
         else:
             self.logger.error("Failed to save data for %s", wire)
-    
+
     def _save_data_to_file(self, data, filename_prefix: str) -> Path | None:
         """Save measurement data to HDF5 file.
-        
+
         Args:
             data: The measurement data object to save
             filename_prefix: Prefix for the filename (without timestamp or extension)
-            
+
         Returns:
             Path to saved file, or None if save failed
         """
@@ -309,15 +349,8 @@ class WireScanSuiteGUI(Display):
         if not file_path:
             return
 
-        load_func = self._get_load_function()
-        if load_func is None:
-            self.logger.info(
-                "Could not import load_from_h5 function for loading."
-            )
-            return
-
         try:
-            result = load_func(file_path)
+            result = self.suite.load_scan(file_path)
         except Exception as exc:
             self.logger.info("Failed to load data: %s", exc)
             return
@@ -330,15 +363,6 @@ class WireScanSuiteGUI(Display):
         self.loaded_results[wire_name] = result
         self.logger.info("Successfully loaded data for %s", wire_name)
         self.dataChanged.emit()
-
-    def _get_load_function(self):
-        try:
-            module = importlib.import_module(
-                "lcls_tools.common.measurements.ws_analysis_results"
-            )
-            return module.load_from_h5
-        except Exception:
-            return None
 
     def logbook_callback(self):
         wire = self.measurement.wire
@@ -358,7 +382,7 @@ class WireScanSuiteGUI(Display):
 
         title = f"{wire} Scan v. {detector} - {profile} Profile"
         image_path = self.suite.plotdir / "profile_plot.png"
-        self.plots.profile_plot.figure.savefig(image_path, dpi=150)
+        self.suite.view.save_fig_to_path(self.plots.profile_plot.figure, image_path)
 
         try:
             elog = importlib.import_module("physicselog")
@@ -373,7 +397,9 @@ class WireScanSuiteGUI(Display):
             "",
             str(image_path),
         )
-        self.save_callback()
+
+        logbook_label = "LCLS-II" if logbook == "lcls2" else "LCLS-I"
+        self.logger.info("Wire %s posted to %s logbook", profile, logbook_label)
 
     def update_trajectory_plot(self):
         wire = self.measurement.wire
@@ -404,7 +430,7 @@ class WireScanSuiteGUI(Display):
             self.update_trajectory_plot()
             self.update_profile_plot()
         else:
-            self.plots.trajectory_plot.axes.cla()
-            self.plots.profile_plot.axes.cla()
+            self.suite.view.clear_figure(self.plots.trajectory_plot.figure)
+            self.suite.view.clear_figure(self.plots.profile_plot.figure)
             self.plots.trajectory_plot.draw()
             self.plots.profile_plot.draw()

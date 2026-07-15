@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -66,7 +67,117 @@ class TestKPICLI(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             sqlite_path = self._build_sqlite_snapshot(tmp_path)
-            output_dir = tmp_path / "reports"
+            output_base_dir = tmp_path / "reports"
+            output_dir = output_base_dir / date.today().isoformat()
+
+            exit_code = main(
+                [
+                    "--sqlite-path",
+                    str(sqlite_path),
+                    "--start-ts",
+                    "2026-04-01T00:00:00",
+                    "--end-ts",
+                    "2026-05-01T00:00:00",
+                    "--cutoff-date",
+                    "2026-05-01",
+                    "--output-dir",
+                    str(output_base_dir),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((output_dir / "kpi_bundle.json").exists())
+            self.assertTrue((output_dir / "executive_kpi_snapshot.json").exists())
+            self.assertTrue((output_dir / "failures_by_wire.json").exists())
+
+            loaded = json.loads((output_dir / "kpi_bundle.json").read_text("utf-8"))
+            self.assertEqual(loaded["executive_kpi_snapshot"]["total_runs"], 2)
+
+    def test_cli_accepts_json_input_without_existing_sqlite(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            source_json = self._build_registry_json(tmp_path)
+            output_base_dir = tmp_path / "reports"
+            output_dir = output_base_dir / date.today().isoformat()
+
+            exit_code = main(
+                [
+                    "--json-path",
+                    str(source_json),
+                    "--start-ts",
+                    "2026-04-01T00:00:00",
+                    "--end-ts",
+                    "2026-05-01T00:00:00",
+                    "--cutoff-date",
+                    "2026-05-01",
+                    "--output-dir",
+                    str(output_base_dir),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((output_dir / "kpi_bundle.json").exists())
+
+    def test_cli_json_input_can_persist_converted_sqlite(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            source_json = self._build_registry_json(tmp_path)
+            output_base_dir = tmp_path / "reports"
+            output_dir = output_base_dir / date.today().isoformat()
+            sqlite_output = tmp_path / "converted.sqlite3"
+
+            exit_code = main(
+                [
+                    "--json-path",
+                    str(source_json),
+                    "--sqlite-output-path",
+                    str(sqlite_output),
+                    "--start-ts",
+                    "2026-04-01T00:00:00",
+                    "--end-ts",
+                    "2026-05-01T00:00:00",
+                    "--cutoff-date",
+                    "2026-05-01",
+                    "--output-dir",
+                    str(output_base_dir),
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(sqlite_output.exists())
+
+    def test_cli_uses_default_production_json_path_when_omitted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            source_json = self._build_registry_json(tmp_path)
+            output_base_dir = tmp_path / "reports"
+            output_dir = output_base_dir / date.today().isoformat()
+
+            with patch(
+                "slacwire.registry.kpi_cli.DEFAULT_PRODUCTION_JSON_PATH",
+                source_json,
+            ):
+                exit_code = main(
+                    [
+                        "--start-ts",
+                        "2026-04-01T00:00:00",
+                        "--end-ts",
+                        "2026-05-01T00:00:00",
+                        "--cutoff-date",
+                        "2026-05-01",
+                        "--output-dir",
+                        str(output_base_dir),
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((output_dir / "kpi_bundle.json").exists())
+
+    def test_cli_does_not_append_date_when_output_dir_is_already_dated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            sqlite_path = self._build_sqlite_snapshot(tmp_path)
+            output_dir = tmp_path / "reports" / "2026-05-01"
 
             exit_code = main(
                 [
@@ -85,83 +196,29 @@ class TestKPICLI(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             self.assertTrue((output_dir / "kpi_bundle.json").exists())
-            self.assertTrue((output_dir / "executive_kpi_snapshot.json").exists())
-            self.assertTrue((output_dir / "failures_by_wire.json").exists())
+            self.assertFalse((output_dir / date.today().isoformat()).exists())
 
-            loaded = json.loads((output_dir / "kpi_bundle.json").read_text("utf-8"))
-            self.assertEqual(loaded["executive_kpi_snapshot"]["total_runs"], 2)
-
-    def test_cli_accepts_json_input_without_existing_sqlite(self):
+    def test_cli_uses_default_output_dir_when_output_dir_omitted(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            source_json = self._build_registry_json(tmp_path)
-            output_dir = tmp_path / "reports"
-
-            exit_code = main(
-                [
-                    "--json-path",
-                    str(source_json),
-                    "--start-ts",
-                    "2026-04-01T00:00:00",
-                    "--end-ts",
-                    "2026-05-01T00:00:00",
-                    "--cutoff-date",
-                    "2026-05-01",
-                    "--output-dir",
-                    str(output_dir),
-                ]
-            )
-
-            self.assertEqual(exit_code, 0)
-            self.assertTrue((output_dir / "kpi_bundle.json").exists())
-
-    def test_cli_json_input_can_persist_converted_sqlite(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            source_json = self._build_registry_json(tmp_path)
-            output_dir = tmp_path / "reports"
-            sqlite_output = tmp_path / "converted.sqlite3"
-
-            exit_code = main(
-                [
-                    "--json-path",
-                    str(source_json),
-                    "--sqlite-output-path",
-                    str(sqlite_output),
-                    "--start-ts",
-                    "2026-04-01T00:00:00",
-                    "--end-ts",
-                    "2026-05-01T00:00:00",
-                    "--cutoff-date",
-                    "2026-05-01",
-                    "--output-dir",
-                    str(output_dir),
-                ]
-            )
-
-            self.assertEqual(exit_code, 0)
-            self.assertTrue(sqlite_output.exists())
-
-    def test_cli_uses_default_production_json_path_when_omitted(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            source_json = self._build_registry_json(tmp_path)
-            output_dir = tmp_path / "reports"
+            sqlite_path = self._build_sqlite_snapshot(tmp_path)
+            output_base_dir = tmp_path / "ws_kpi_report"
+            output_dir = output_base_dir / date.today().isoformat()
 
             with patch(
-                "slacwire.registry.kpi_cli.DEFAULT_PRODUCTION_JSON_PATH",
-                source_json,
+                "slacwire.registry.kpi_cli.DEFAULT_OUTPUT_BASE_DIR",
+                output_base_dir,
             ):
                 exit_code = main(
                     [
+                        "--sqlite-path",
+                        str(sqlite_path),
                         "--start-ts",
                         "2026-04-01T00:00:00",
                         "--end-ts",
                         "2026-05-01T00:00:00",
                         "--cutoff-date",
                         "2026-05-01",
-                        "--output-dir",
-                        str(output_dir),
                     ]
                 )
 

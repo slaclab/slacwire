@@ -32,6 +32,7 @@ requires-python = ">=3.10"
 
 [project.scripts]
 slacwire-kpi-report = "slacwire.registry.kpi_cli:main"
+slacwire-log-run = "slacwire.registry.log_run_cli:main"
 
 [options]
 include_package_data = true
