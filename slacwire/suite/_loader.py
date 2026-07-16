@@ -18,7 +18,7 @@ class LoaderMixin:
         Returns:
             WireMeasurementAnalysisResult loaded from the file.
         """
-        from slac_measurements.wires.analysis_results import load_from_h5
+        from slac_measurements.wires.analysis.results import load_from_h5
 
         return load_from_h5(str(path))
 
@@ -44,7 +44,7 @@ class LoaderMixin:
         Returns:
             List of WireMeasurementAnalysisResult, sorted by timestamp descending.
         """
-        from slac_measurements.wires.analysis_results import load_from_h5
+        from slac_measurements.wires.analysis.results import load_from_h5
 
         dt = datetime.strptime(date, "%Y-%m-%d")
         day_dir = Path(_BASE_DIR) / f"{dt:%Y}" / f"{dt:%m}" / f"{dt:%d}"
