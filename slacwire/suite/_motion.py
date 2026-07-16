@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import logging
 
-from ..otf_motion_test import run_otf_motion_test
-from ..step_motion_test import run_step_motion_test
+from slac_measurements.wires.collection.beamless_otf import run_beamless_otf_scan
+from slac_measurements.wires.collection.beamless_step import run_beamless_step_scan
 
 logger = logging.getLogger("wire_scan_logger")
 
 _MOTION_TEST_FNS = {
-    "otf": run_otf_motion_test,
-    "step": run_step_motion_test,
+    "otf": run_beamless_otf_scan,
+    "step": run_beamless_step_scan,
 }
 
 
