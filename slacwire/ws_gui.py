@@ -420,7 +420,16 @@ class WireScanSuiteGUI(Display):
             return
 
         profile = self.plots.profile_control.profile.lower()
-        if not profile:
+        if not profile or profile not in data.profiles:
+            profile_plot.figure.clf()
+            ax = profile_plot.figure.add_subplot(1, 1, 1)
+            ax.text(
+                0.5, 0.5, "Profile not measured",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=14, color="gray",
+            )
+            ax.set_axis_off()
+            profile_plot.draw()
             return
         self.suite.view.draw_profile(profile_plot.figure, data, wire, detector, profile)
         profile_plot.draw()
