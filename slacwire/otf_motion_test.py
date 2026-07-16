@@ -8,7 +8,7 @@ import numpy as np
 
 from slac_devices.wire import Wire
 import slac_measurements.utils
-from slac_measurements.wires.collection_results import (
+from slac_measurements.wires.collection.results import (
     MeasurementMetadata,
     WireMeasurementCollectionResult,
 )

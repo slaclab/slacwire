@@ -83,8 +83,8 @@ class JitterCompareMixin:
         Returns (records, plotdir) where each record contains all computed data
         needed by the individual plotting methods.
         """
-        from slac_measurements.wires.coordinates import stage_to_beam
-        from slac_measurements.wires.jitter_correction import compute_jitter
+        from slac_measurements.wires.analysis.coordinates import stage_to_beam
+        from slac_measurements.wires.analysis.jitter_correction import compute_jitter
 
         scans = self.discover_scans(wire, date, limit, subdir=subdir)
         if not scans:
@@ -400,8 +400,8 @@ class JitterCompareMixin:
         Returns:
             Dict with keys: wire, n_scans, rms_values, mean_rms, std_rms.
         """
-        from slac_measurements.wires.coordinates import stage_to_beam
-        from slac_measurements.wires.jitter_correction import compute_jitter
+        from slac_measurements.wires.analysis.coordinates import stage_to_beam
+        from slac_measurements.wires.analysis.jitter_correction import compute_jitter
 
         scans = self.discover_scans(wire, date, limit, subdir=subdir)
         if not scans:
