@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import logging
 
-from slac_measurements.wires.collection.beamless_otf import run_beamless_otf_scan
-from slac_measurements.wires.collection.beamless_step import run_beamless_step_scan
-
 logger = logging.getLogger("wire_scan_logger")
 
-_MOTION_TEST_FNS = {
-    "otf": run_beamless_otf_scan,
-    "step": run_beamless_step_scan,
-}
+
+def _get_motion_fn(mode: str):
+    from slac_measurements.wires.collection.beamless_otf import run_beamless_otf_scan
+    from slac_measurements.wires.collection.beamless_step import run_beamless_step_scan
+
+    fns = {"otf": run_beamless_otf_scan, "step": run_beamless_step_scan}
+    return fns[mode]
 
 
 class MotionTestMixin:
@@ -29,14 +29,14 @@ class MotionTestMixin:
             The motion test result object from the scan.
         """
         mode = scan_mode.lower()
-        if mode not in _MOTION_TEST_FNS:
+        if mode not in ("otf", "step"):
             raise ValueError(
                 f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
             )
 
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
-        result = _MOTION_TEST_FNS[mode](device)
+        result = _get_motion_fn(mode)(device)
         logger.info("%s motion test complete for %s.", mode.upper(), wire_name)
 
         if plot:
