@@ -41,6 +41,7 @@ from slacwire.suite import WireScanSuite, dated_output_dir
 class _FakeData:
     def __init__(self):
         self.profiles = {"x": object()}
+        self.fit_result = object()
         self.saved_to = None
 
     def save_to_h5(self, path):
