@@ -1,6 +1,4 @@
 from __future__ import annotations
-import epics.ca
-from epics.pv import _PVcache_
 
 import logging
 
@@ -21,6 +19,9 @@ class DiagnosticsMixin:
                 entries. Also contains "EDEF" and "BSA" keys with counts of
                 PVs matching those subsystems.
         """
+        import epics.ca
+        from epics.pv import _PVcache_
+
         ctx = epics.ca.current_context()
         context_cache = epics.ca._cache.get(ctx, {}) if ctx is not None else {}
 
@@ -50,6 +51,9 @@ class DiagnosticsMixin:
         subsystems. "_unmatched" contains PVs that don't match any configured
         wire device or subsystem.
         """
+        import epics.ca
+        from epics.pv import _PVcache_
+
         ctx = epics.ca.current_context()
         context_cache = epics.ca._cache.get(ctx, {}) if ctx is not None else {}
 
