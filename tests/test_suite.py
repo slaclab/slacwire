@@ -97,7 +97,7 @@ class TestWireScanSuite(unittest.TestCase):
                     wires=[], outdir=Path(tmp), plotdir=Path(tmp) / "plots"
                 )
             suite.save = False
-            suite.show = False
+            suite.show = True
             suite.save_plots = False
             suite.registry = MagicMock()
             suite.view = MagicMock()
@@ -116,7 +116,7 @@ class TestWireScanSuite(unittest.TestCase):
 
             suite.view.render.assert_called_once()
             render_kwargs = suite.view.render.call_args.kwargs
-            self.assertFalse(render_kwargs["show"])
+            self.assertTrue(render_kwargs["show"])
             self.assertFalse(render_kwargs["save"])
             self.assertEqual(render_kwargs["profiles"], ("x", "y"))
 
@@ -177,10 +177,9 @@ class TestWireScanSuite(unittest.TestCase):
             self.assertEqual(resolved, newer)
 
     @patch.object(WireScanSuite, "_make_device")
-    @patch.object(WireScanSuite, "_run_step_device")
-    @patch.object(WireScanSuite, "_run_otf_device")
+    @patch.object(WireScanSuite, "_run_device_scan")
     def test_run_single_defaults_to_otf_and_allows_step(
-        self, mock_run_otf, mock_run_step, mock_make_device
+        self, mock_run_device_scan, mock_make_device
     ):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
@@ -192,12 +191,18 @@ class TestWireScanSuite(unittest.TestCase):
 
             mock_make_device.return_value = _FakeDevice(beam_rate=1000)
             suite.run_single("WS28144")
-            mock_run_otf.assert_called_once()
+            mock_run_device_scan.assert_called_once()
+            self.assertEqual(
+                mock_run_device_scan.call_args.kwargs["method"], "otf"
+            )
 
-            mock_run_otf.reset_mock()
+            mock_run_device_scan.reset_mock()
             suite.devices.clear()
             suite.run_single("WS28144", scan_mode="step")
-            mock_run_step.assert_called_once()
+            mock_run_device_scan.assert_called_once()
+            self.assertEqual(
+                mock_run_device_scan.call_args.kwargs["method"], "step"
+            )
 
 
 if __name__ == "__main__":
