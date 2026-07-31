@@ -17,6 +17,8 @@ class RunMixin:
         rms_detector: str | None = None,
         multi_view: bool = True,
         jitter_correction: bool = False,
+        charge_normalization: bool = False,
+        charge_toroid: str | None = None,
     ):
         """Run all configured wires in the requested scan mode.
 
@@ -28,6 +30,10 @@ class RunMixin:
                 (trajectory + profiles) instead of individual plot windows.
             jitter_correction: If True, apply orbit-fit jitter correction
                 before analysis.
+            charge_normalization: If True, normalize detector signals by
+                per-pulse charge before analysis.
+            charge_toroid: Toroid device name for charge normalization.
+                If None, defaults to the first available from wire metadata.
         """
         show_orig = self.show
         if multi_view:
@@ -41,6 +47,8 @@ class RunMixin:
                 scan_mode=scan_mode,
                 rms_detector=rms_detector,
                 jitter_correction=jitter_correction,
+                charge_normalization=charge_normalization,
+                charge_toroid=charge_toroid,
             )
 
             if multi_view:
@@ -73,6 +81,8 @@ class RunMixin:
         scan_mode: str = "otf",
         rms_detector: str | None = None,
         jitter_correction: bool = False,
+        charge_normalization: bool = False,
+        charge_toroid: str | None = None,
     ):
         """Run a single wire in the requested scan mode.
 
@@ -83,6 +93,10 @@ class RunMixin:
                 uses the device's default detector.
             jitter_correction: If True, apply orbit-fit jitter correction
                 before analysis.
+            charge_normalization: If True, normalize detector signals by
+                per-pulse charge before analysis.
+            charge_toroid: Toroid device name for charge normalization.
+                If None, defaults to the first available from wire metadata.
         """
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
@@ -97,7 +111,12 @@ class RunMixin:
             device=device,
             method=mode,
             scan_fn=lambda dev, **kw: self._measure(
-                dev, scan_mode=mode, jitter_correction=jitter_correction, **kw
+                dev,
+                scan_mode=mode,
+                jitter_correction=jitter_correction,
+                charge_normalization=charge_normalization,
+                charge_toroid=charge_toroid,
+                **kw,
             ),
             rms_detector=rms_detector,
             file_prefix="OTF" if mode == "otf" else "Step",
@@ -109,6 +128,8 @@ class RunMixin:
         scan_mode: str,
         rms_detector: str | None = None,
         jitter_correction: bool = False,
+        charge_normalization: bool = False,
+        charge_toroid: str | None = None,
     ):
         """Create a measurement and execute it."""
         measurement = WireBeamProfileMeasurement(
@@ -118,6 +139,8 @@ class RunMixin:
             scan_mode=scan_mode,
             rms_detector=rms_detector,
             jitter_correction=jitter_correction,
+            charge_normalization=charge_normalization,
+            charge_toroid=charge_toroid,
         )
 
     def _run_device_scan(
