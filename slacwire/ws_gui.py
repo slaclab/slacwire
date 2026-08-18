@@ -377,7 +377,7 @@ class WireScanSuiteGUI(Display):
         )
 
         logbook_label = "LCLS-II" if logbook == "physics_lcls2elog" else "LCLS"
-        self.logger.info(f"{wire} {profile} posted to {logbook_label} logbook", profile, logbook_label)
+        self.logger.info(f"{wire} {profile} posted to {logbook_label} logbook")
 
     def update_trajectory_plot(self):
         wire = self.measurement.wire
