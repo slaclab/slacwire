@@ -164,25 +164,13 @@ class WireScanSuiteGUI(Display):
         self.plotLayout.addWidget(self.plots)
 
     def _build_logger(self, log_dest: Path):
-        try:
-            module = importlib.import_module(
-                "lcls_tools.common.logger.file_logger"
-            )
-            custom_logger = module.custom_logger
+        import slac_measurements.logger.file_logger
 
-            return custom_logger(log_file=log_dest, name="wire_scan_logger")
-        except Exception:
-            logger = logging.getLogger("wire_scan_logger")
-            logger.handlers.clear()
-            file_handler = logging.FileHandler(log_dest)
-            file_handler.setFormatter(
-                logging.Formatter(
-                    "%(asctime)s - %(levelname)s - %(message)s"
-                )
-            )
-            logger.addHandler(file_handler)
-            logger.propagate = False
-            return logger
+        logger = logging.getLogger("wire_scan_logger")
+        logger.handlers.clear()
+        return slac_measurements.logger.file_logger.custom_logger(
+            log_file=str(log_dest), name="wire_scan_logger"
+        )
 
     def _selected_wire_identifier(self) -> str:
         wire = self.measurement.wire
