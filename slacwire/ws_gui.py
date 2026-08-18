@@ -368,13 +368,18 @@ class WireScanSuiteGUI(Display):
         image_path = self.suite.plotdir / "profile_plot.png"
         self.suite.view.save_fig_to_path(self.plots.profile_plot.figure, image_path)
 
-        elog.post(
+        response = elog.post(
             title=title,
             body=f"Wire scan for {wire} using {detector} with {profile} profile.",
-            tags=["Wire Scan", wire, detector, profile],
+            tags=["Wire Scan"],
             logbooks=[logbook],
             file_paths=[str(image_path)],
         )
+        if response.status_code != 200:
+            self.logger.error(
+                "Failed to post to logbook: %s", response.text
+            )
+            return
 
         logbook_label = "LCLS-II" if logbook == "physics_lcls2elog" else "LCLS"
         self.logger.info(f"{wire} {profile} posted to {logbook_label} logbook")
