@@ -333,7 +333,7 @@ class WireScanSuiteGUI(Display):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select a file",
-            str(self.base_path),
+            "/u1/lcls/physics/data/wire_scan/",
         )
         if not file_path:
             return
