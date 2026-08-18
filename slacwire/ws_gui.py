@@ -1,4 +1,3 @@
-import importlib
 import logging
 import traceback
 from datetime import datetime
@@ -354,35 +353,27 @@ class WireScanSuiteGUI(Display):
         self.dataChanged.emit()
 
     def logbook_callback(self):
-        elog = importlib.import_module("elog_client")
         wire = self.measurement.wire
         detector = self.measurement.detector
         profile = self.plots.profile_control.profile
 
-        if self.nav.beampath.startswith("SC"):
-            logbook = "physics_lcls2elog"
-        elif self.nav.beampath.startswith("CU"):
-            logbook = "physics_lclselog"
-
         title = f"{wire} Scan v. {detector} - {profile} Profile"
+        body = f"Wire scan for {wire} using {detector} with {profile} profile."
+
         image_path = self.suite.plotdir / "profile_plot.png"
         self.suite.view.save_fig_to_path(self.plots.profile_plot.figure, image_path)
 
-        response = elog.post(
-            title=title,
-            body=f"Wire scan for {wire} using {detector} with {profile} profile.",
-            tags=["Wire Scan"],
-            logbooks=[logbook],
-            file_paths=[str(image_path)],
-        )
-        if response.status_code != 200:
-            self.logger.error(
-                "Failed to post to logbook: %s", response.text
+        try:
+            self.suite.post_to_logbook(
+                title=title,
+                body=body,
+                attachment=str(image_path),
             )
+        except Exception as e:
+            self.logger.error("Failed to post to logbook: %s", e)
             return
 
-        logbook_label = "LCLS-II" if logbook == "physics_lcls2elog" else "LCLS"
-        self.logger.info(f"{wire} {profile} posted to {logbook_label} logbook")
+        self.logger.info("%s %s posted to logbook", wire, profile)
 
     def update_trajectory_plot(self):
         wire = self.measurement.wire
