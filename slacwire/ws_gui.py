@@ -168,6 +168,7 @@ class WireScanSuiteGUI(Display):
 
         logger = logging.getLogger("wire_scan_logger")
         logger.handlers.clear()
+        logger.propagate = False
         return slac_measurements.logger.file_logger.custom_logger(
             log_file=str(log_dest), name="wire_scan_logger"
         )
@@ -353,41 +354,30 @@ class WireScanSuiteGUI(Display):
         self.dataChanged.emit()
 
     def logbook_callback(self):
+        elog = importlib.import_module("elog_client")
         wire = self.measurement.wire
         detector = self.measurement.detector
         profile = self.plots.profile_control.profile
 
         if self.nav.beampath.startswith("SC"):
-            logbook = "lcls2"
+            logbook = "physics_lcls2elog"
         elif self.nav.beampath.startswith("CU"):
-            logbook = "lcls"
-        else:
-            self.logger.info(
-                "Could not determine logbook for beampath %s",
-                self.nav.beampath,
-            )
-            return
+            logbook = "physics_lclselog"
 
         title = f"{wire} Scan v. {detector} - {profile} Profile"
         image_path = self.suite.plotdir / "profile_plot.png"
         self.suite.view.save_fig_to_path(self.plots.profile_plot.figure, image_path)
 
-        try:
-            elog = importlib.import_module("physicselog")
-        except Exception:
-            self.logger.info("physicselog is unavailable in this environment")
-            return
-
-        elog.submit_entry(
-            logbook,
-            "Wire Scan GUI",
-            title,
-            "",
-            str(image_path),
+        elog.post(
+            title=title,
+            body=f"Wire scan for {wire} using {detector} with {profile} profile.",
+            tags=["Wire Scan", wire, detector, profile],
+            logbooks=[logbook],
+            file_paths=[str(image_path)],
         )
 
-        logbook_label = "LCLS-II" if logbook == "lcls2" else "LCLS-I"
-        self.logger.info("Wire %s posted to %s logbook", profile, logbook_label)
+        logbook_label = "LCLS-II" if logbook == "physics_lcls2elog" else "LCLS"
+        self.logger.info(f"{wire} {profile} posted to {logbook_label} logbook", profile, logbook_label)
 
     def update_trajectory_plot(self):
         wire = self.measurement.wire
