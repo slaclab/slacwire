@@ -5,7 +5,7 @@ from pathlib import Path
 
 from slac_measurements.wires.analysis.results import load_from_h5
 
-from ._constants import _BASE_DIR
+from slacwire._constants import _BASE_DIR
 
 
 class LoaderMixin:

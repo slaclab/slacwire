@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ._constants import _BASE_DIR
+from slacwire._constants import _BASE_DIR
 
 
 def _fit_profile(x_beam: np.ndarray, detector_values: np.ndarray) -> dict:

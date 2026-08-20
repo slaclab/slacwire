@@ -154,7 +154,7 @@ class TestKPICLI(unittest.TestCase):
             output_dir = output_base_dir / date.today().isoformat()
 
             with patch(
-                "slacwire.registry.kpi_cli.DEFAULT_PRODUCTION_JSON_PATH",
+                "slacwire.registry.kpi_cli._REGISTRY_PATH",
                 source_json,
             ):
                 exit_code = main(
