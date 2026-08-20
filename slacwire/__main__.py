@@ -10,7 +10,7 @@ from .suite import WIRE_AREA_LOOKUP, Beampath
 VALID_WIRES = sorted(WIRE_AREA_LOOKUP.keys())
 VALID_BEAMPATHS = ["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
 VALID_FIT_METHODS = [
-    "gaussian", "asymmetric", "super_gaussian",
+    "gaussian", "asymmetric_gaussian", "super_gaussian",
     "rms_raw", "rms_cut_peak", "rms_cut_area", "rms_floor",
 ]
 

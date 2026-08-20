@@ -8,7 +8,7 @@ Beampath = Literal["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"
 
 FittingMethod = Literal[
     "gaussian",
-    "asymmetric",
+    "asymmetric_gaussian",
     "super_gaussian",
     "rms_raw",
     "rms_cut_peak",

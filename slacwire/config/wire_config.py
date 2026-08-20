@@ -17,7 +17,7 @@ from typing import Literal
 
 FittingMethod = Literal[
     "gaussian",
-    "asymmetric",
+    "asymmetric_gaussian",
     "super_gaussian",
     "rms_raw",
     "rms_cut_peak",

@@ -66,7 +66,7 @@ class ProfileControl(QGroupBox):
 
 _FIT_METHOD_LABELS = {
     "gaussian": "Gaussian",
-    "asymmetric": "Asymmetric",
+    "asymmetric_gaussian": "Asymmetric Gaussian",
     "super_gaussian": "Super Gaussian",
     "rms_raw": "RMS Raw",
     "rms_cut_peak": "RMS Cut Peak",
@@ -74,7 +74,7 @@ _FIT_METHOD_LABELS = {
     "rms_floor": "RMS Floor",
 }
 
-_IMPLEMENTED_FIT_METHODS = {"gaussian", "asymmetric", "super_gaussian"}
+_IMPLEMENTED_FIT_METHODS = {"gaussian", "asymmetric_gaussian", "super_gaussian"}
 
 
 class FitControl(QGroupBox):
