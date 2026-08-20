@@ -64,9 +64,13 @@ def get_wire_config(
 ) -> WireConfig:
     """Read config for a wire/beampath pair.
 
-    Returns a WireConfig with defaults if no row exists.
+    Returns a WireConfig with defaults if no row exists or if the
+    database is unreachable.
     """
-    conn = _connect(db_path)
+    try:
+        conn = _connect(db_path)
+    except (OSError, sqlite3.OperationalError):
+        return WireConfig()
     try:
         row = conn.execute(
             "SELECT fitting_method, detector, toroid, charge_normalization, "
@@ -110,7 +114,10 @@ def set_wire_config(
     Only provided (non-None) fields are written.  Pass explicit None for
     detector/toroid/jitter_bpms to clear an override (fall through to metadata).
     """
-    conn = _connect(db_path)
+    try:
+        conn = _connect(db_path)
+    except (OSError, sqlite3.OperationalError):
+        return
     try:
         existing = conn.execute(
             "SELECT 1 FROM wire_config WHERE wire = ? AND beampath = ?",
