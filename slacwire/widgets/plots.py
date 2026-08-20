@@ -7,7 +7,8 @@ from qtpy.QtWidgets import (
     QButtonGroup,
     QVBoxLayout,
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QStandardItem
 
 from slacwire.config.wire_config import VALID_FIT_METHODS
 import matplotlib
@@ -73,6 +74,8 @@ _FIT_METHOD_LABELS = {
     "rms_floor": "RMS Floor",
 }
 
+_IMPLEMENTED_FIT_METHODS = {"gaussian", "asymmetric", "super_gaussian"}
+
 
 class FitControl(QGroupBox):
     fitMethodChanged = pyqtSignal(str)
@@ -84,6 +87,13 @@ class FitControl(QGroupBox):
         for slug in VALID_FIT_METHODS:
             label = _FIT_METHOD_LABELS.get(slug, slug)
             self.fit_combo.addItem(label, userData=slug)
+
+        model = self.fit_combo.model()
+        for i in range(self.fit_combo.count()):
+            slug = self.fit_combo.itemData(i)
+            if slug not in _IMPLEMENTED_FIT_METHODS:
+                item = model.item(i)
+                item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
 
         layout = QHBoxLayout()
         layout.addWidget(self.fit_combo)
