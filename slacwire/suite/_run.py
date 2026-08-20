@@ -5,6 +5,8 @@ from datetime import datetime
 
 from slac_measurements.wires.scan import WireBeamProfileMeasurement
 
+from slacwire.config import get_wire_config
+
 logger = logging.getLogger("wire_scan_logger")
 
 
@@ -16,8 +18,8 @@ class RunMixin:
         scan_mode: str = "otf",
         rms_detector: str | None = None,
         multi_view: bool = True,
-        jitter_correction: bool = False,
-        charge_normalization: bool = False,
+        jitter_correction: bool | None = None,
+        charge_normalization: bool | None = None,
         charge_toroid: str | None = None,
     ):
         """Run all configured wires in the requested scan mode.
@@ -28,12 +30,12 @@ class RunMixin:
                 uses the device's default detector.
             multi_view: If True, show a single combined 2x2 figure per wire
                 (trajectory + profiles) instead of individual plot windows.
-            jitter_correction: If True, apply orbit-fit jitter correction
-                before analysis.
+            jitter_correction: If True, apply orbit-fit jitter correction.
+                If None, uses per-wire config from wire_config database.
             charge_normalization: If True, normalize detector signals by
-                per-pulse charge before analysis.
+                per-pulse charge. If None, uses per-wire config.
             charge_toroid: Toroid device name for charge normalization.
-                If None, defaults to the first available from wire metadata.
+                If None, uses per-wire config or first available from metadata.
         """
         show_orig = self.show
         if multi_view:
@@ -80,8 +82,8 @@ class RunMixin:
         wire: str,
         scan_mode: str = "otf",
         rms_detector: str | None = None,
-        jitter_correction: bool = False,
-        charge_normalization: bool = False,
+        jitter_correction: bool | None = None,
+        charge_normalization: bool | None = None,
         charge_toroid: str | None = None,
     ):
         """Run a single wire in the requested scan mode.
@@ -91,12 +93,12 @@ class RunMixin:
             scan_mode: "otf" (on-the-fly) or "step". Default "otf".
             rms_detector: Override detector for RMS calculation. If None,
                 uses the device's default detector.
-            jitter_correction: If True, apply orbit-fit jitter correction
-                before analysis.
+            jitter_correction: If True, apply orbit-fit jitter correction.
+                If None, uses per-wire config from wire_config database.
             charge_normalization: If True, normalize detector signals by
-                per-pulse charge before analysis.
+                per-pulse charge. If None, uses per-wire config.
             charge_toroid: Toroid device name for charge normalization.
-                If None, defaults to the first available from wire metadata.
+                If None, uses per-wire config or first available from metadata.
         """
         wire_name, _ = self._resolve_wire_and_area(wire)
         device = self._get_device(wire_name)
@@ -107,15 +109,26 @@ class RunMixin:
                 f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
             )
 
+        config = get_wire_config(wire_name, self.beampath)
+        resolved_jitter = (
+            jitter_correction if jitter_correction is not None
+            else config.jitter_correction
+        )
+        resolved_charge_norm = (
+            charge_normalization if charge_normalization is not None
+            else config.charge_normalization
+        )
+        resolved_toroid = charge_toroid or config.toroid
+
         self._run_device_scan(
             device=device,
             method=mode,
             scan_fn=lambda dev, **kw: self._measure(
                 dev,
                 scan_mode=mode,
-                jitter_correction=jitter_correction,
-                charge_normalization=charge_normalization,
-                charge_toroid=charge_toroid,
+                jitter_correction=resolved_jitter,
+                charge_normalization=resolved_charge_norm,
+                charge_toroid=resolved_toroid,
                 **kw,
             ),
             rms_detector=rms_detector,

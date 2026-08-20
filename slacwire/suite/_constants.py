@@ -6,6 +6,16 @@ from typing import Literal
 
 Beampath = Literal["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
 
+FittingMethod = Literal[
+    "gaussian",
+    "asymmetric",
+    "super_gaussian",
+    "rms_raw",
+    "rms_cut_peak",
+    "rms_cut_area",
+    "rms_floor",
+]
+
 WIRE_AREA_LOOKUP = {
     "WS01": "DL1",
     "WS02": "DL1",

@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+from slac_measurements.wires.analysis.results import load_from_h5
+
 from ._constants import _BASE_DIR
 
 
@@ -18,8 +20,6 @@ class LoaderMixin:
         Returns:
             WireMeasurementAnalysisResult loaded from the file.
         """
-        from slac_measurements.wires.analysis.results import load_from_h5
-
         return load_from_h5(str(path))
 
     def discover_scans(
@@ -44,8 +44,6 @@ class LoaderMixin:
         Returns:
             List of WireMeasurementAnalysisResult, sorted by timestamp descending.
         """
-        from slac_measurements.wires.analysis.results import load_from_h5
-
         dt = datetime.strptime(date, "%Y-%m-%d")
         day_dir = Path(_BASE_DIR) / f"{dt:%Y}" / f"{dt:%m}" / f"{dt:%d}"
 
