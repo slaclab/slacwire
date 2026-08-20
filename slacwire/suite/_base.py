@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 from slac_devices.reader import create_wire
 
 from ..registry import RunRegistry
-from ._constants import WIRE_AREA_LOOKUP, _SCOPE_DATA_DIR, dated_output_dir
+from slacwire._constants import WIRE_AREA_LOOKUP, _SCOPE_DATA_DIR, dated_output_dir
 
 logger = logging.getLogger("wire_scan_logger")
 

@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 from ._base import WireScanSuiteBase
 from ._collect import CollectMixin
-from ._constants import (
+from slacwire._constants import (
     WIRE_AREA_LOOKUP,
     VALID_BEAMPATHS,
     _BASE_DIR,

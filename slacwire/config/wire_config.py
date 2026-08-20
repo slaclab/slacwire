@@ -14,7 +14,7 @@ import sqlite3
 from dataclasses import dataclass, fields
 from pathlib import Path
 
-from slacwire.suite._constants import VALID_FIT_METHODS, _CONFIG_DB_PATH
+from slacwire._constants import VALID_FIT_METHODS, _CONFIG_DB_PATH
 
 _DB_PATH = _CONFIG_DB_PATH
 

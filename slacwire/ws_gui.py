@@ -9,7 +9,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from qtpy.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QWidget
 
 from slac_devices.reader import create_wire
-from slacwire.suite._constants import _BASE_DIR
+from slacwire._constants import _BASE_DIR
 from slacwire.widgets.measurement import MeasurementWidget, extract_measurement_data
 from slacwire.widgets.navigation import NavigationWidget
 from slacwire.widgets.plots import PlotWidget

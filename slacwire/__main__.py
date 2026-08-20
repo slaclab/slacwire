@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from .suite._constants import VALID_BEAMPATHS, VALID_FIT_METHODS, WIRE_AREA_LOOKUP
+from ._constants import VALID_BEAMPATHS, VALID_FIT_METHODS, WIRE_AREA_LOOKUP
 
 
 VALID_WIRES = sorted(WIRE_AREA_LOOKUP.keys())

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from slacwire.suite._constants import _REGISTRY_PATH
+from slacwire._constants import _REGISTRY_PATH
 
 logger = logging.getLogger("wire_scan_logger")
 

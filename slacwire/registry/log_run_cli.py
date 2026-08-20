@@ -31,7 +31,7 @@ else:
         sys.path.insert(0, str(_repo_root))
     from slacwire.registry.registry import RunRegistry
 
-from slacwire.suite._constants import _REGISTRY_PATH
+from slacwire._constants import _REGISTRY_PATH
 
 
 def _build_parser() -> argparse.ArgumentParser:

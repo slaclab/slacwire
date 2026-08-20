@@ -9,7 +9,7 @@ import sys
 import subprocess
 import tempfile
 
-from slacwire.suite._constants import _REGISTRY_PATH
+from slacwire._constants import _REGISTRY_PATH
 
 try:
     from slacwire.registry.kpi_queries import RunRegistryKPIReporter

@@ -20,7 +20,7 @@ class TestWireConfig(unittest.TestCase):
         assert config.fitting_method == "gaussian"
         assert config.detector is None
         assert config.toroid is None
-        assert config.charge_normalization is True
+        assert config.charge_normalization is False
         assert config.jitter_correction is False
         assert config.jitter_bpms is None
 
