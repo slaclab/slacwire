@@ -63,6 +63,17 @@ class ProfileControl(QGroupBox):
         return self.selected_profile()
 
 
+_FIT_METHOD_LABELS = {
+    "gaussian": "Gaussian",
+    "asymmetric": "Asymmetric",
+    "super_gaussian": "Super Gaussian",
+    "rms_raw": "RMS Raw",
+    "rms_cut_peak": "RMS Cut Peak",
+    "rms_cut_area": "RMS Cut Area",
+    "rms_floor": "RMS Floor",
+}
+
+
 class FitControl(QGroupBox):
     fitMethodChanged = pyqtSignal(str)
 
@@ -70,23 +81,31 @@ class FitControl(QGroupBox):
         super().__init__(parent=None)
 
         self.fit_combo = QComboBox()
-        self.fit_combo.addItems(VALID_FIT_METHODS)
+        for slug in VALID_FIT_METHODS:
+            label = _FIT_METHOD_LABELS.get(slug, slug)
+            self.fit_combo.addItem(label, userData=slug)
 
         layout = QHBoxLayout()
         layout.addWidget(self.fit_combo)
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
-        self.fit_combo.currentTextChanged.connect(self.fitMethodChanged)
+        self.fit_combo.currentIndexChanged.connect(self._on_changed)
+
+    def _on_changed(self, index: int):
+        slug = self.fit_combo.itemData(index)
+        if slug:
+            self.fitMethodChanged.emit(slug)
 
     @property
     def fitting_method(self) -> str:
-        return self.fit_combo.currentText()
+        return self.fit_combo.currentData() or "gaussian"
 
     def set_fitting_method(self, method: str):
-        idx = self.fit_combo.findText(method)
-        if idx >= 0:
-            self.fit_combo.setCurrentIndex(idx)
+        for i in range(self.fit_combo.count()):
+            if self.fit_combo.itemData(i) == method:
+                self.fit_combo.setCurrentIndex(i)
+                return
 
 
 class PlotWidget(QWidget):

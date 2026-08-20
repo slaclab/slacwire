@@ -101,6 +101,7 @@ class WireScanSuiteGUI(Display):
             create_wire_fn=self._create_wire,
         )
         self.plots = PlotWidget()
+        self.measurement.set_fit_control(self.plots.fit_control)
 
         self.suite = self._build_suite()
         self.current_runs = {}
@@ -120,10 +121,6 @@ class WireScanSuiteGUI(Display):
         self.plots.profile_control.profileChanged.connect(
             self.update_profile_plot
         )
-        self.plots.fit_control.fitMethodChanged.connect(
-            self._on_fit_method_changed
-        )
-        self.measurement.wireChanged.connect(self._sync_fit_control)
 
         self.init_ui()
 
@@ -157,6 +154,8 @@ class WireScanSuiteGUI(Display):
         self.ui.saveDataButton.clicked.connect(self.save_callback)
         self.ui.loadDataButton.clicked.connect(self.load_callback)
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
+        self.ui.saveConfigButton.clicked.connect(self.save_config_callback)
+        self.ui.loadConfigButton.clicked.connect(self.load_config_callback)
 
         self.ui.statusUpdate.setReadOnly(True)
         log_dest = self.suite.outdir / f"WireScanLog-{datetime.now():%Y-%m-%d}.txt"
@@ -209,12 +208,21 @@ class WireScanSuiteGUI(Display):
 
         self.dataChanged.emit()
 
-    def _on_fit_method_changed(self, method: str):
-        self.measurement.fitting_method_combo.setCurrentText(method)
+    def save_config_callback(self):
+        self.measurement.save_config()
+        self.logger.info(
+            "Config saved for %s on %s",
+            self.measurement.wire,
+            self.nav.beampath,
+        )
 
-    def _sync_fit_control(self):
-        method = self.measurement.fitting_method_combo.currentText()
-        self.plots.fit_control.set_fitting_method(method)
+    def load_config_callback(self):
+        self.measurement._apply_config()
+        self.logger.info(
+            "Config loaded for %s on %s",
+            self.measurement.wire,
+            self.nav.beampath,
+        )
 
     def update_parameters(self):
         if self.measurement.active_wire is None:
