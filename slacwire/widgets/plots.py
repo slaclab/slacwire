@@ -64,15 +64,11 @@ class ProfileControl(QGroupBox):
         return self.selected_profile()
 
 
-_FIT_METHOD_LABELS = {
-    "gaussian": "Gaussian",
-    "asymmetric_gaussian": "Asymmetric Gaussian",
-    "super_gaussian": "Super Gaussian",
-    "rms_raw": "RMS Raw",
-    "rms_cut_peak": "RMS Cut Peak",
-    "rms_cut_area": "RMS Cut Area",
-    "rms_floor": "RMS Floor",
-}
+def _label_from_slug(slug: str) -> str:
+    return " ".join(
+        word.upper() if word == "rms" else word.capitalize()
+        for word in slug.split("_")
+    )
 
 _IMPLEMENTED_FIT_METHODS = {"gaussian", "asymmetric_gaussian", "super_gaussian"}
 
@@ -85,8 +81,7 @@ class FitControl(QGroupBox):
 
         self.fit_combo = QComboBox()
         for slug in VALID_FIT_METHODS:
-            label = _FIT_METHOD_LABELS.get(slug, slug)
-            self.fit_combo.addItem(label, userData=slug)
+            self.fit_combo.addItem(_label_from_slug(slug), userData=slug)
 
         model = self.fit_combo.model()
         for i in range(self.fit_combo.count()):

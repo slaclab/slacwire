@@ -4,9 +4,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from slacwire.suite._constants import _REGISTRY_PATH
+
 logger = logging.getLogger("wire_scan_logger")
 
-DEFAULT_REGISTRY_PATH = Path("/u1/lcls/physics/data/wire_scan/ws_run_registry.json")
+DEFAULT_REGISTRY_PATH = _REGISTRY_PATH
 
 
 @dataclass

@@ -17,9 +17,9 @@ except ImportError:  # pragma: no cover - direct script execution fallback
     from kpi_queries import RunRegistryKPIReporter
     from registry_sqlite import convert_run_registry_json_to_sqlite
 
-DEFAULT_PRODUCTION_JSON_PATH = Path(
-    "/u1/lcls/physics/data/wire_scan/ws_run_registry.json"
-)
+from slacwire.suite._constants import _REGISTRY_PATH
+
+DEFAULT_PRODUCTION_JSON_PATH = _REGISTRY_PATH
 DEFAULT_OUTPUT_BASE_DIR = Path("~/kabanaty/sandbox/ws_kpi_report").expanduser()
 
 

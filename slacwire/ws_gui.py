@@ -9,6 +9,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from qtpy.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QWidget
 
 from slac_devices.reader import create_wire
+from slacwire.suite._constants import _BASE_DIR
 from slacwire.widgets.measurement import MeasurementWidget, extract_measurement_data
 from slacwire.widgets.navigation import NavigationWidget
 from slacwire.widgets.plots import PlotWidget
@@ -373,7 +374,7 @@ class WireScanSuiteGUI(Display):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select a file",
-            "/u1/lcls/physics/data/wire_scan/",
+            str(_BASE_DIR),
         )
         if not file_path:
             return

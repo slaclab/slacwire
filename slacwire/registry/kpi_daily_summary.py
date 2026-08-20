@@ -27,7 +27,9 @@ def main():
 
     try:
         # Use production registry JSON
-        json_path = Path("/u1/lcls/physics/data/wire_scan/ws_run_registry.json")
+        from slacwire.suite._constants import _REGISTRY_PATH
+
+        json_path = _REGISTRY_PATH
 
         if not json_path.exists():
             print(f"Error: Registry JSON not found at {json_path}")
