@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS wire_config (
     fitting_method       TEXT NOT NULL DEFAULT 'gaussian',
     detector             TEXT,
     toroid               TEXT,
-    charge_normalization INTEGER NOT NULL DEFAULT 1,
+    charge_normalization INTEGER NOT NULL DEFAULT 0,
     jitter_correction    INTEGER NOT NULL DEFAULT 0,
     jitter_bpms          TEXT,
     updated_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
@@ -53,7 +53,7 @@ class WireConfig:
     fitting_method: str = "gaussian"
     detector: str | None = None
     toroid: str | None = None
-    charge_normalization: bool = True
+    charge_normalization: bool = False
     jitter_correction: bool = False
     jitter_bpms: list[str] | None = None
 
@@ -163,7 +163,7 @@ def set_wire_config(
                 fitting_method=fitting_method or "gaussian",
                 detector=detector,
                 toroid=toroid,
-                charge_normalization=charge_normalization if charge_normalization is not None else True,
+                charge_normalization=charge_normalization if charge_normalization is not None else False,
                 jitter_correction=jitter_correction if jitter_correction is not None else False,
                 jitter_bpms=jitter_bpms,
             )
