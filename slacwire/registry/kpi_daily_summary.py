@@ -9,6 +9,8 @@ import sys
 import subprocess
 import tempfile
 
+from slacwire.suite._constants import _REGISTRY_PATH
+
 try:
     from slacwire.registry.kpi_queries import RunRegistryKPIReporter
     from slacwire.registry.registry_sqlite import convert_run_registry_json_to_sqlite
@@ -27,8 +29,6 @@ def main():
 
     try:
         # Use production registry JSON
-        from slacwire.suite._constants import _REGISTRY_PATH
-
         json_path = _REGISTRY_PATH
 
         if not json_path.exists():

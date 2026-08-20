@@ -8,8 +8,6 @@ from slacwire.suite._constants import _REGISTRY_PATH
 
 logger = logging.getLogger("wire_scan_logger")
 
-DEFAULT_REGISTRY_PATH = _REGISTRY_PATH
-
 
 @dataclass
 class RunRegistry:
@@ -23,7 +21,7 @@ class RunRegistry:
         path: Filesystem path to the JSON registry file.
         entries: In-memory list of run entry dicts loaded from / written to disk.
     """
-    path: Path = DEFAULT_REGISTRY_PATH
+    path: Path = _REGISTRY_PATH
     entries: list = field(default_factory=list)
     _counter: int = field(default=0, init=False, repr=False)
 
