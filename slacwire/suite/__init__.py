@@ -21,7 +21,7 @@ from ._base import WireScanSuiteBase
 from ._collect import CollectMixin
 from ._constants import (
     WIRE_AREA_LOOKUP,
-    Beampath,
+    VALID_BEAMPATHS,
     _BASE_DIR,
     _SCOPE_DATA_DIR,
     dated_output_dir,
@@ -87,6 +87,6 @@ class WireScanSuite(LogbookMixin, JitterCompareMixin, DiagnosticsMixin, MotionTe
 __all__ = [
     "WireScanSuite",
     "WIRE_AREA_LOOKUP",
-    "Beampath",
+    "VALID_BEAMPATHS",
     "dated_output_dir",
 ]

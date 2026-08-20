@@ -14,7 +14,7 @@ import sqlite3
 from dataclasses import dataclass, fields
 from pathlib import Path
 
-from slacwire.suite._constants import FittingMethod, VALID_FIT_METHODS
+from slacwire.suite._constants import VALID_FIT_METHODS
 
 _DB_PATH = Path("/u1/lcls/physics/data/wire_scan/wire_config.db")
 

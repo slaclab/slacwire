@@ -3,12 +3,11 @@
 import argparse
 import sys
 
-from .suite import WIRE_AREA_LOOKUP, Beampath
-from .suite._constants import VALID_FIT_METHODS
+from .suite import WIRE_AREA_LOOKUP
+from .suite._constants import VALID_BEAMPATHS, VALID_FIT_METHODS
 
 
 VALID_WIRES = sorted(WIRE_AREA_LOOKUP.keys())
-VALID_BEAMPATHS = ["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
 
 
 def _add_common_args(parser: argparse.ArgumentParser):

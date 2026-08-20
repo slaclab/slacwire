@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 from slac_devices.reader import create_wire
 
 from ..registry import RunRegistry
-from ._constants import WIRE_AREA_LOOKUP, Beampath, _SCOPE_DATA_DIR, dated_output_dir
+from ._constants import WIRE_AREA_LOOKUP, _SCOPE_DATA_DIR, dated_output_dir
 
 logger = logging.getLogger("wire_scan_logger")
 
@@ -23,7 +23,7 @@ class WireScanSuiteBase:
 
     wires: list = field(default_factory=lambda: ["WS28144"])
     devices: dict = field(default_factory=dict)
-    beampath: Beampath = "CU_HXR"
+    beampath: str = "CU_HXR"
     detector: str | None = None
     outdir: Path = field(default_factory=dated_output_dir)
     plotdir: Path | None = None

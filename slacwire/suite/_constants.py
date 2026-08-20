@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
 
-Beampath = Literal["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
+VALID_BEAMPATHS = ["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
 
-FittingMethod = Literal[
+VALID_FIT_METHODS = [
     "gaussian",
     "asymmetric_gaussian",
     "super_gaussian",
@@ -15,8 +14,6 @@ FittingMethod = Literal[
     "rms_cut_area",
     "rms_floor",
 ]
-
-VALID_FIT_METHODS: list[str] = list(FittingMethod.__args__)
 
 WIRE_AREA_LOOKUP = {
     "WS01": "DL1",
