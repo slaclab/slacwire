@@ -16,6 +16,8 @@ FittingMethod = Literal[
     "rms_floor",
 ]
 
+VALID_FIT_METHODS: list[str] = list(FittingMethod.__args__)
+
 WIRE_AREA_LOOKUP = {
     "WS01": "DL1",
     "WS02": "DL1",

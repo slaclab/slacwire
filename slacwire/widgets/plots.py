@@ -10,7 +10,7 @@ from qtpy.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QStandardItem
 
-from slacwire.config.wire_config import VALID_FIT_METHODS
+from slacwire.suite._constants import VALID_FIT_METHODS
 import matplotlib
 
 matplotlib.use("Qt5Agg")

@@ -3,16 +3,12 @@
 import argparse
 import sys
 
-from .config.wire_config import FittingMethod
 from .suite import WIRE_AREA_LOOKUP, Beampath
+from .suite._constants import VALID_FIT_METHODS
 
 
 VALID_WIRES = sorted(WIRE_AREA_LOOKUP.keys())
 VALID_BEAMPATHS = ["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
-VALID_FIT_METHODS = [
-    "gaussian", "asymmetric_gaussian", "super_gaussian",
-    "rms_raw", "rms_cut_peak", "rms_cut_area", "rms_floor",
-]
 
 
 def _add_common_args(parser: argparse.ArgumentParser):

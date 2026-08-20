@@ -13,19 +13,8 @@ import json
 import sqlite3
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Literal
 
-FittingMethod = Literal[
-    "gaussian",
-    "asymmetric_gaussian",
-    "super_gaussian",
-    "rms_raw",
-    "rms_cut_peak",
-    "rms_cut_area",
-    "rms_floor",
-]
-
-VALID_FIT_METHODS: list[str] = list(FittingMethod.__args__)
+from slacwire.suite._constants import FittingMethod, VALID_FIT_METHODS
 
 _DB_PATH = Path("/u1/lcls/physics/data/wire_scan/wire_config.db")
 
