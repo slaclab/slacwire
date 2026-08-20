@@ -16,6 +16,9 @@ fake_slac_devices.reader = fake_slac_devices_reader
 fake_slac_measurements = types.ModuleType("slac_measurements")
 fake_slac_measurements_wires = types.ModuleType("slac_measurements.wires")
 fake_slac_measurements_scan = types.ModuleType("slac_measurements.wires.scan")
+fake_slac_measurements_analysis = types.ModuleType("slac_measurements.wires.analysis")
+fake_slac_measurements_results = types.ModuleType("slac_measurements.wires.analysis.results")
+fake_slac_measurements_results.load_from_h5 = MagicMock()
 
 
 class _DummyMeasurement:
@@ -28,12 +31,16 @@ class _DummyMeasurement:
 
 fake_slac_measurements_scan.WireBeamProfileMeasurement = _DummyMeasurement
 fake_slac_measurements.wires = fake_slac_measurements_wires
+fake_slac_measurements_wires.analysis = fake_slac_measurements_analysis
+fake_slac_measurements_analysis.results = fake_slac_measurements_results
 
 sys.modules.setdefault("slac_devices", fake_slac_devices)
 sys.modules.setdefault("slac_devices.reader", fake_slac_devices_reader)
 sys.modules.setdefault("slac_measurements", fake_slac_measurements)
 sys.modules.setdefault("slac_measurements.wires", fake_slac_measurements_wires)
 sys.modules.setdefault("slac_measurements.wires.scan", fake_slac_measurements_scan)
+sys.modules.setdefault("slac_measurements.wires.analysis", fake_slac_measurements_analysis)
+sys.modules.setdefault("slac_measurements.wires.analysis.results", fake_slac_measurements_results)
 
 from slacwire.suite import WireScanSuite, dated_output_dir
 

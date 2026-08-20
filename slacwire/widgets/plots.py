@@ -1,4 +1,5 @@
 from qtpy.QtWidgets import (
+    QComboBox,
     QRadioButton,
     QHBoxLayout,
     QWidget,
@@ -6,7 +7,10 @@ from qtpy.QtWidgets import (
     QButtonGroup,
     QVBoxLayout,
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QStandardItem
+
+from slacwire._constants import VALID_FIT_METHODS
 import matplotlib
 
 matplotlib.use("Qt5Agg")
@@ -60,6 +64,55 @@ class ProfileControl(QGroupBox):
         return self.selected_profile()
 
 
+def _label_from_slug(slug: str) -> str:
+    return " ".join(
+        word.upper() if word == "rms" else word.capitalize()
+        for word in slug.split("_")
+    )
+
+_IMPLEMENTED_FIT_METHODS = {"gaussian", "asymmetric_gaussian", "super_gaussian"}
+
+
+class FitControl(QGroupBox):
+    fitMethodChanged = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent=None)
+
+        self.fit_combo = QComboBox()
+        for slug in VALID_FIT_METHODS:
+            self.fit_combo.addItem(_label_from_slug(slug), userData=slug)
+
+        model = self.fit_combo.model()
+        for i in range(self.fit_combo.count()):
+            slug = self.fit_combo.itemData(i)
+            if slug not in _IMPLEMENTED_FIT_METHODS:
+                item = model.item(i)
+                item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+
+        layout = QHBoxLayout()
+        layout.addWidget(self.fit_combo)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+        self.fit_combo.currentIndexChanged.connect(self._on_changed)
+
+    def _on_changed(self, index: int):
+        slug = self.fit_combo.itemData(index)
+        if slug:
+            self.fitMethodChanged.emit(slug)
+
+    @property
+    def fitting_method(self) -> str:
+        return self.fit_combo.currentData() or "gaussian"
+
+    def set_fitting_method(self, method: str):
+        for i in range(self.fit_combo.count()):
+            if self.fit_combo.itemData(i) == method:
+                self.fit_combo.setCurrentIndex(i)
+                return
+
+
 class PlotWidget(QWidget):
     wireChanged = pyqtSignal(str)
     detectorChanged = pyqtSignal(str)
@@ -70,10 +123,15 @@ class PlotWidget(QWidget):
         self.trajectory_plot = MplCanvas()
         self.profile_plot = MplCanvas()
         self.profile_control = ProfileControl()
+        self.fit_control = FitControl()
+
+        controls_row = QHBoxLayout()
+        controls_row.addWidget(self.profile_control)
+        controls_row.addWidget(self.fit_control)
 
         layout = QVBoxLayout()
         layout.addWidget(self.trajectory_plot)
         layout.addWidget(self.profile_plot)
-        layout.addWidget(self.profile_control)
+        layout.addLayout(controls_row)
 
         self.setLayout(layout)

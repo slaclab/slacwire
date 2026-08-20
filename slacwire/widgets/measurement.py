@@ -1,6 +1,10 @@
-from qtpy.QtWidgets import QVBoxLayout, QComboBox, QGroupBox, QListWidget, QCheckBox
+from qtpy.QtWidgets import (
+    QVBoxLayout, QComboBox, QGroupBox, QListWidget, QCheckBox,
+)
 from PyQt5.QtCore import pyqtSignal
 from collections import defaultdict
+
+from slacwire.config import get_wire_config, set_wire_config
 
 
 def extract_measurement_data(yaml_data):
@@ -31,14 +35,16 @@ class MeasurementWidget(QGroupBox):
         self.create_wire = create_wire_fn
         self.current_area = None
         self.my_wire = None
+        self._beampath = "CU_HXR"
+        self._fit_control = None
 
         # UI Elements
         self.wire_combo = QComboBox()
         self.detector_combo = QComboBox()
         self.bpm_list = QListWidget()
+        self.bpm_list.setSelectionMode(QListWidget.MultiSelection)
         self.jitter_checkbox = QCheckBox("Apply Jitter Correction")
         self.charge_checkbox = QCheckBox("Normalize by Charge")
-        self.charge_checkbox.setEnabled(False)
 
         layout = QVBoxLayout()
         layout.addWidget(self.wire_combo)
@@ -105,6 +111,12 @@ class MeasurementWidget(QGroupBox):
 
         self.bpm_list.blockSignals(False)
 
+    def set_beampath(self, beampath: str):
+        """Update the current beampath (called when NavigationWidget changes)."""
+        self._beampath = beampath
+        if self.wire_combo.currentText():
+            self._apply_config()
+
     def _on_wire_selected(self, wire: str):
         if not wire or not self.current_area:
             return
@@ -117,7 +129,59 @@ class MeasurementWidget(QGroupBox):
             print(f"Failed to create wire {wire} in area {self.current_area}: {e}")
             return
 
+        self._apply_config()
         self.wireChanged.emit(wire)
+
+    def set_fit_control(self, fit_control):
+        """Set reference to the FitControl widget in the plots area."""
+        self._fit_control = fit_control
+
+    def _apply_config(self):
+        """Read per-wire config from SQLite and set widget states."""
+        wire = self.wire_combo.currentText()
+        if not wire:
+            return
+
+        config = get_wire_config(wire, self._beampath)
+
+        self.jitter_checkbox.setChecked(config.jitter_correction)
+        self.charge_checkbox.setChecked(config.charge_normalization)
+
+        if self._fit_control is not None:
+            self._fit_control.set_fitting_method(config.fitting_method)
+
+        if config.detector:
+            det_idx = self.detector_combo.findText(config.detector)
+            if det_idx >= 0:
+                self.detector_combo.setCurrentIndex(det_idx)
+
+        if config.jitter_bpms:
+            for i in range(self.bpm_list.count()):
+                item = self.bpm_list.item(i)
+                item.setSelected(item.text() in config.jitter_bpms)
+
+    def save_config(self):
+        """Write current widget state to SQLite config database."""
+        wire = self.wire_combo.currentText()
+        if not wire:
+            return
+
+        selected_bpms = [item.text() for item in self.bpm_list.selectedItems()]
+        fitting_method = (
+            self._fit_control.fitting_method
+            if self._fit_control is not None
+            else "gaussian"
+        )
+
+        set_wire_config(
+            wire=wire,
+            beampath=self._beampath,
+            fitting_method=fitting_method,
+            detector=self.detector_combo.currentText() or None,
+            charge_normalization=self.charge_checkbox.isChecked(),
+            jitter_correction=self.jitter_checkbox.isChecked(),
+            jitter_bpms=selected_bpms or None,
+        )
 
     @property
     def wire(self) -> str:

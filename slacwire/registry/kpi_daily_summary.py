@@ -9,6 +9,8 @@ import sys
 import subprocess
 import tempfile
 
+from slacwire._constants import _REGISTRY_PATH
+
 try:
     from slacwire.registry.kpi_queries import RunRegistryKPIReporter
     from slacwire.registry.registry_sqlite import convert_run_registry_json_to_sqlite
@@ -27,7 +29,7 @@ def main():
 
     try:
         # Use production registry JSON
-        json_path = Path("/u1/lcls/physics/data/wire_scan/ws_run_registry.json")
+        json_path = _REGISTRY_PATH
 
         if not json_path.exists():
             print(f"Error: Registry JSON not found at {json_path}")

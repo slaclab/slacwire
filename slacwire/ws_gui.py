@@ -8,6 +8,8 @@ from pydm import Display
 from PyQt5.QtCore import QThread, pyqtSignal
 from qtpy.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QWidget
 
+from slac_devices.reader import create_wire
+from slacwire._constants import _BASE_DIR
 from slacwire.widgets.measurement import MeasurementWidget, extract_measurement_data
 from slacwire.widgets.navigation import NavigationWidget
 from slacwire.widgets.plots import PlotWidget
@@ -26,6 +28,7 @@ class WireScanSuiteThread(QThread):
         beampath: str,
         detector: str,
         jitter_correction: bool = False,
+        charge_normalization: bool = False,
     ):
         super().__init__()
         self.suite = suite
@@ -33,6 +36,7 @@ class WireScanSuiteThread(QThread):
         self.beampath = beampath
         self.detector = detector
         self.jitter_correction = jitter_correction
+        self.charge_normalization = charge_normalization
 
     def run(self):
         try:
@@ -49,8 +53,9 @@ class WireScanSuiteThread(QThread):
             # - Data saving and logging
             self.suite.run_single(
                 wire=wire_name,
-                scan_mode="otf",            # Force OTF mode for testing! 4/14/26
+                scan_mode="otf",
                 jitter_correction=self.jitter_correction,
+                charge_normalization=self.charge_normalization,
             )
 
             # Retrieve the latest run data and entry from registry
@@ -97,6 +102,7 @@ class WireScanSuiteGUI(Display):
             create_wire_fn=self._create_wire,
         )
         self.plots = PlotWidget()
+        self.measurement.set_fit_control(self.plots.fit_control)
 
         self.suite = self._build_suite()
         self.current_runs = {}
@@ -104,6 +110,7 @@ class WireScanSuiteGUI(Display):
 
         self.nav.areaChanged.connect(self.measurement.update_area)
         self.nav.beampathChanged.connect(self._on_beampath_changed)
+        self.nav.beampathChanged.connect(self.measurement.set_beampath)
         self.measurement.wireChanged.connect(self.update_parameters)
         self.measurement.wireChanged.connect(self.update_plots)
         self.measurement.detectorChanged.connect(self._on_detector_changed)
@@ -114,6 +121,9 @@ class WireScanSuiteGUI(Display):
         self.dataChanged.connect(self.update_plots)
         self.plots.profile_control.profileChanged.connect(
             self.update_profile_plot
+        )
+        self.plots.fit_control.fitMethodChanged.connect(
+            self._on_fit_method_changed
         )
 
         self.init_ui()
@@ -131,8 +141,6 @@ class WireScanSuiteGUI(Display):
         )
 
     def _create_wire(self, area, name):
-        from slac_devices.reader import create_wire
-
         return create_wire(area=area, name=name)
 
     def ui_filename(self):
@@ -150,6 +158,8 @@ class WireScanSuiteGUI(Display):
         self.ui.saveDataButton.clicked.connect(self.save_callback)
         self.ui.loadDataButton.clicked.connect(self.load_callback)
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
+        self.ui.saveConfigButton.clicked.connect(self.save_config_callback)
+        self.ui.loadConfigButton.clicked.connect(self.load_config_callback)
 
         self.ui.statusUpdate.setReadOnly(True)
         log_dest = self.suite.outdir / f"WireScanLog-{datetime.now():%Y-%m-%d}.txt"
@@ -202,6 +212,37 @@ class WireScanSuiteGUI(Display):
 
         self.dataChanged.emit()
 
+    def _on_fit_method_changed(self, method: str):
+        wire = self.measurement.wire
+        data = self._latest_result_for_wire(wire)
+        if data is None or not hasattr(data, "reanalyze"):
+            return
+
+        new_data = data.reanalyze(fitting_method=method)
+
+        if wire in self.suite.results and self.suite.results[wire]:
+            self.suite.results[wire][-1] = new_data
+        elif wire in self.loaded_results:
+            self.loaded_results[wire] = new_data
+
+        self.dataChanged.emit()
+
+    def save_config_callback(self):
+        self.measurement.save_config()
+        self.logger.info(
+            "Config saved for %s on %s",
+            self.measurement.wire,
+            self.nav.beampath,
+        )
+
+    def load_config_callback(self):
+        self.measurement._apply_config()
+        self.logger.info(
+            "Config loaded for %s on %s",
+            self.measurement.wire,
+            self.nav.beampath,
+        )
+
     def update_parameters(self):
         if self.measurement.active_wire is None:
             return
@@ -236,6 +277,7 @@ class WireScanSuiteGUI(Display):
             beampath=self.nav.beampath,
             detector=self.measurement.detector or self.suite.detector,
             jitter_correction=self.measurement.jitter_enabled,
+            charge_normalization=self.measurement.charge_normalized,
         )
         self.thread.scan_complete.connect(self.on_scan_complete)
         self.thread.scan_failed.connect(self.on_scan_failure)
@@ -332,7 +374,7 @@ class WireScanSuiteGUI(Display):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select a file",
-            "/u1/lcls/physics/data/wire_scan/",
+            str(_BASE_DIR),
         )
         if not file_path:
             return

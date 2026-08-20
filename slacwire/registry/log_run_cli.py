@@ -22,14 +22,16 @@ from pathlib import Path
 # where relative imports work) and `python3 /path/to/log_run_cli.py` (direct
 # script execution, where __package__ is None and relative imports fail).
 if __package__:
-    from .registry import DEFAULT_REGISTRY_PATH, RunRegistry
+    from .registry import RunRegistry
 else:
     # Add the repo root (three levels up from this file) to sys.path so that
     # `slacwire` is importable when the script is invoked directly.
     _repo_root = Path(__file__).resolve().parent.parent.parent
     if str(_repo_root) not in sys.path:
         sys.path.insert(0, str(_repo_root))
-    from slacwire.registry.registry import DEFAULT_REGISTRY_PATH, RunRegistry
+    from slacwire.registry.registry import RunRegistry
+
+from slacwire._constants import _REGISTRY_PATH
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -65,7 +67,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--registry-path",
         default=None,
         metavar="PATH",
-        help=f"Override default registry JSON path (default: {DEFAULT_REGISTRY_PATH})",
+        help=f"Override default registry JSON path (default: {_REGISTRY_PATH})",
     )
     return p
 
@@ -74,7 +76,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    registry_path = Path(args.registry_path) if args.registry_path else DEFAULT_REGISTRY_PATH
+    registry_path = Path(args.registry_path) if args.registry_path else _REGISTRY_PATH
 
     try:
         registry = RunRegistry(path=registry_path)

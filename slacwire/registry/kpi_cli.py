@@ -17,9 +17,7 @@ except ImportError:  # pragma: no cover - direct script execution fallback
     from kpi_queries import RunRegistryKPIReporter
     from registry_sqlite import convert_run_registry_json_to_sqlite
 
-DEFAULT_PRODUCTION_JSON_PATH = Path(
-    "/u1/lcls/physics/data/wire_scan/ws_run_registry.json"
-)
+from slacwire._constants import _REGISTRY_PATH
 DEFAULT_OUTPUT_BASE_DIR = Path("~/kabanaty/sandbox/ws_kpi_report").expanduser()
 
 
@@ -117,7 +115,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Path to a RunRegistry JSON file. The CLI will convert it to SQLite "
             "before querying. Defaults to "
-            f"{DEFAULT_PRODUCTION_JSON_PATH}."
+            f"{_REGISTRY_PATH}."
         ),
     )
     parser.add_argument(
@@ -164,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
     if cutoff_date is None:
         cutoff_date = end_ts.split("T", 1)[0]
 
-    json_path = Path(args.json_path) if args.json_path else DEFAULT_PRODUCTION_JSON_PATH
+    json_path = Path(args.json_path) if args.json_path else _REGISTRY_PATH
 
     if args.sqlite_path:
         bundle = run_kpi_bundle(
