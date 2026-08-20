@@ -14,8 +14,12 @@ Wire scanner GUI and orchestration package for LCLS beam profile measurements.
 ```text
 slacwire/
 	pyproject.toml
+	benchmarking/             # Performance and timing benchmarks
+	tests/                    # pytest test suite
 	slacwire/
 		__init__.py
+		__main__.py           # CLI entry point (python -m slacwire)
+		launch_ws_gui.sh      # Shell script to initialize env and start GUI
 		suite/                # Controller/orchestration (mixin-based)
 			__init__.py       # Exports WireScanSuite (composed dataclass)
 			_base.py          # Dataclass fields, device management, infrastructure
@@ -23,11 +27,11 @@ slacwire/
 			_collect.py       # collect_single (raw data, no analysis)
 			_motion.py        # Beam-less motion validation tests
 			_results.py       # Result queries, display, and caching
+			_loader.py        # Load and discover previously saved .h5 scans
 			_diagnostics.py   # EPICS CA cache inspection
+			_jitter_compare.py # Jitter correction comparison and FFT analysis
 			_constants.py     # WIRE_AREA_LOOKUP, Beampath type, paths
 		view.py               # View/plot rendering
-		otf_motion_test.py    # OTF motion integration test
-		step_motion_test.py   # Step motion integration test
 		registry/
 			registry.py       # Registry persistence
 			registry_sqlite.py
@@ -79,7 +83,52 @@ suite.save_plots = False
 
 suite.run_single(wire="WS28144")
 result = suite.latest_run("WS28144")
+
+# Charge normalization (optional)
+suite.run_single(wire="WS28144", charge_normalization=True)
+suite.run_all(scan_mode="otf", charge_normalization=True)
 ```
+
+## Jitter Analysis
+
+The `JitterCompareMixin` provides vibration and jitter correction analysis for
+comparing beam profiles with and without jitter correction applied:
+
+```python
+suite.jitter_compare(wire="WS28144")
+suite.residual_compare(wire="WS28144")
+suite.fft_spectrum(wire="WS28144")
+suite.fft_overlay(wire="WS28144")
+suite.vibration_summary(wire="WS28144")
+```
+
+These methods compute Gaussian fits on raw and jitter-corrected profiles,
+extract residuals, and perform FFT power spectrum analysis to quantify
+wire vibration.
+
+## Loading Previous Scans
+
+The `LoaderMixin` allows loading and discovering previously saved `.h5`
+scan files:
+
+```python
+suite.load_scan("/path/to/scan_2026-07-01_WS28144.h5")
+scans = suite.discover_scans(wire="WS28144", subdir="2026-07-01")
+```
+
+## CLI Usage
+
+`slacwire` provides a command-line interface via `python -m slacwire`:
+
+```bash
+python -m slacwire run --wires WS28144 --beampath CU_HXR --scan-mode otf
+python -m slacwire collect WS28144 --beampath CU_HXR
+python -m slacwire motion-test WS28144
+python -m slacwire replot WS28144
+python -m slacwire summary --wires WS28144 WS27644
+```
+
+Available commands: `run`, `collect`, `motion-test`, `replot`, `summary`.
 
 ## GUI Notes
 
@@ -90,6 +139,7 @@ At runtime, the GUI:
 - Uses `WireScanSuite` to execute scans in a worker thread
 - Uses `WireScanView` for plotting behavior
 - Writes outputs to dated directories under `/u1/lcls/physics/data/wire_scan`
+- Handles unmeasured profiles gracefully with user-facing messages
 
 ## MVC Separation in Current Design
 
@@ -107,97 +157,23 @@ This keeps scan execution logic independent from plotting implementation and fil
 - Put rendering and figure composition changes in `view.py`.
 - Keep JSON registry and run logging concerns in `registry/registry.py`.
 - Prefer relative imports within the `slacwire` package.
+- Set `dev_mode=True` on the suite to suppress registry logging for scan failures during development.
+- Run the test suite with `pytest tests/` from the repo root.
 
-## Reporting: JSON to SQLite Snapshot Conversion
+## Reporting and Registry CLIs
 
-For weekly/monthly reporting, keep scan-time JSON writes unchanged and convert a
-snapshot of the registry to SQLite when needed:
+The `registry/` sub-package provides KPI reporting and run logging tools:
 
-```python
-from slacwire import convert_run_registry_json_to_sqlite
+- `slacwire-kpi-report` — convert the JSON run registry to SQLite and generate
+  monthly KPI reports. Defaults to the previous calendar month if date range is
+  omitted. See `slacwire-kpi-report --help`.
+- `slacwire-log-run` — log a run to the registry from the command line.
+  See `slacwire-log-run --help`.
 
-summary = convert_run_registry_json_to_sqlite(
-	source_json="/path/to/ws_registry_2026-04-24.json",
-	sqlite_path="/path/to/ws_registry_2026-04-24.sqlite3",
-)
-
-print(summary)
-```
-
-The converter creates:
-- `runs` table with KPI-focused metadata, including `timestamp_raw`,
-  `timestamp_iso`, `source_json`, and `ingested_at`
-- `run_plots` table with one row per plot path
-
-Companion management-report query pack:
-- `docs/run_registry_kpi_queries.sql`
-
-Python companion (SQLAlchemy):
+Python API:
 
 ```python
-from slacwire import RunRegistryKPIReporter
-
-reporter = RunRegistryKPIReporter.from_sqlite_path(
-	"/path/to/ws_registry_2026-04-24.sqlite3"
-)
-
-snapshot = reporter.executive_kpi_snapshot(
-	start_ts="2026-04-01T00:00:00",
-	end_ts="2026-05-01T00:00:00",
-)
-print(snapshot)
-
-failure_by_wire = reporter.failures_by_wire(
-	start_ts="2026-04-01T00:00:00",
-	end_ts="2026-05-01T00:00:00",
-)
-print(failure_by_wire)
+from slacwire import convert_run_registry_json_to_sqlite, RunRegistryKPIReporter
 ```
 
-CLI companion for production/ops use:
-
-```bash
-slacwire-kpi-report \
-	--sqlite-path /path/to/ws_registry_2026-04-24.sqlite3 \
-	--start-ts 2026-04-01T00:00:00 \
-	--end-ts 2026-05-01T00:00:00 \
-	--cutoff-date 2026-05-01 \
-	--output-dir /path/to/reports/2026-04
-```
-
-Production default JSON path shortcut (uses
-`/u1/lcls/physics/data/wire_scan/ws_run_registry.json`):
-
-```bash
-slacwire-kpi-report \
-	--start-ts 2026-04-01T00:00:00 \
-	--end-ts 2026-05-01T00:00:00 \
-	--cutoff-date 2026-05-01 \
-	--output-dir /path/to/reports/2026-04
-```
-
-JSON-only workflow (no existing SQLite needed):
-
-```bash
-slacwire-kpi-report \
-	--json-path /path/to/ws_run_registry.json \
-	--start-ts 2026-04-01T00:00:00 \
-	--end-ts 2026-05-01T00:00:00 \
-	--cutoff-date 2026-05-01 \
-	--output-dir /path/to/reports/2026-04
-```
-
-Optional: persist the converted SQLite file while running from JSON input:
-
-```bash
-slacwire-kpi-report \
-	--json-path /path/to/ws_run_registry.json \
-	--sqlite-output-path /path/to/ws_registry_2026-04.sqlite3 \
-	--output-dir /path/to/reports/2026-04
-```
-
-If `--start-ts` and `--end-ts` are omitted, the CLI defaults to the previous
-full calendar month.
-
-By default, conversion will not overwrite an existing SQLite file. Pass
-`overwrite=True` only when you explicitly want replacement.
+See `registry/kpi_cli.py` and `docs/run_registry_kpi_queries.sql` for details.

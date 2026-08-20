@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-logger = logging.getLogger("wire_scan_logger")
+from slacwire._constants import _REGISTRY_PATH
 
-DEFAULT_REGISTRY_PATH = Path("/u1/lcls/physics/data/wire_scan/ws_run_registry.json")
+logger = logging.getLogger("wire_scan_logger")
 
 
 @dataclass
@@ -21,7 +21,7 @@ class RunRegistry:
         path: Filesystem path to the JSON registry file.
         entries: In-memory list of run entry dicts loaded from / written to disk.
     """
-    path: Path = DEFAULT_REGISTRY_PATH
+    path: Path = _REGISTRY_PATH
     entries: list = field(default_factory=list)
     _counter: int = field(default=0, init=False, repr=False)
 

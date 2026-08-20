@@ -2,9 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
 
-Beampath = Literal["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
+VALID_BEAMPATHS = ["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
+
+VALID_FIT_METHODS = [
+    "gaussian",
+    "asymmetric_gaussian",
+    "super_gaussian",
+    "rms_raw",
+    "rms_cut_peak",
+    "rms_cut_area",
+    "rms_floor",
+]
 
 WIRE_AREA_LOOKUP = {
     "WS01": "DL1",
@@ -39,8 +48,10 @@ WIRE_AREA_LOOKUP = {
     "WS34B": "LTUS",
 }
 
-_BASE_DIR = "/u1/lcls/physics/data/wire_scan"
+_BASE_DIR = Path("/u1/lcls/physics/data/wire_scan")
 _SCOPE_DATA_DIR = Path("/u1/lcls/physics/genMotion/wirescanners/scope_data")
+_REGISTRY_PATH = _BASE_DIR / "ws_run_registry.json"
+_CONFIG_DB_PATH = _BASE_DIR / "wire_config.db"
 
 
 def dated_output_dir(

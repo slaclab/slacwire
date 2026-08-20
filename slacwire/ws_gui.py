@@ -1,4 +1,3 @@
-import importlib
 import logging
 import traceback
 from datetime import datetime
@@ -9,6 +8,8 @@ from pydm import Display
 from PyQt5.QtCore import QThread, pyqtSignal
 from qtpy.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QWidget
 
+from slac_devices.reader import create_wire
+from slacwire._constants import _BASE_DIR
 from slacwire.widgets.measurement import MeasurementWidget, extract_measurement_data
 from slacwire.widgets.navigation import NavigationWidget
 from slacwire.widgets.plots import PlotWidget
@@ -27,6 +28,7 @@ class WireScanSuiteThread(QThread):
         beampath: str,
         detector: str,
         jitter_correction: bool = False,
+        charge_normalization: bool = False,
     ):
         super().__init__()
         self.suite = suite
@@ -34,6 +36,7 @@ class WireScanSuiteThread(QThread):
         self.beampath = beampath
         self.detector = detector
         self.jitter_correction = jitter_correction
+        self.charge_normalization = charge_normalization
 
     def run(self):
         try:
@@ -50,8 +53,9 @@ class WireScanSuiteThread(QThread):
             # - Data saving and logging
             self.suite.run_single(
                 wire=wire_name,
-                scan_mode="otf",            # Force OTF mode for testing! 4/14/26
+                scan_mode="otf",
                 jitter_correction=self.jitter_correction,
+                charge_normalization=self.charge_normalization,
             )
 
             # Retrieve the latest run data and entry from registry
@@ -98,6 +102,7 @@ class WireScanSuiteGUI(Display):
             create_wire_fn=self._create_wire,
         )
         self.plots = PlotWidget()
+        self.measurement.set_fit_control(self.plots.fit_control)
 
         self.suite = self._build_suite()
         self.current_runs = {}
@@ -105,6 +110,7 @@ class WireScanSuiteGUI(Display):
 
         self.nav.areaChanged.connect(self.measurement.update_area)
         self.nav.beampathChanged.connect(self._on_beampath_changed)
+        self.nav.beampathChanged.connect(self.measurement.set_beampath)
         self.measurement.wireChanged.connect(self.update_parameters)
         self.measurement.wireChanged.connect(self.update_plots)
         self.measurement.detectorChanged.connect(self._on_detector_changed)
@@ -115,6 +121,9 @@ class WireScanSuiteGUI(Display):
         self.dataChanged.connect(self.update_plots)
         self.plots.profile_control.profileChanged.connect(
             self.update_profile_plot
+        )
+        self.plots.fit_control.fitMethodChanged.connect(
+            self._on_fit_method_changed
         )
 
         self.init_ui()
@@ -132,8 +141,6 @@ class WireScanSuiteGUI(Display):
         )
 
     def _create_wire(self, area, name):
-        from slac_devices.reader import create_wire
-
         return create_wire(area=area, name=name)
 
     def ui_filename(self):
@@ -151,6 +158,8 @@ class WireScanSuiteGUI(Display):
         self.ui.saveDataButton.clicked.connect(self.save_callback)
         self.ui.loadDataButton.clicked.connect(self.load_callback)
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
+        self.ui.saveConfigButton.clicked.connect(self.save_config_callback)
+        self.ui.loadConfigButton.clicked.connect(self.load_config_callback)
 
         self.ui.statusUpdate.setReadOnly(True)
         log_dest = self.suite.outdir / f"WireScanLog-{datetime.now():%Y-%m-%d}.txt"
@@ -164,25 +173,14 @@ class WireScanSuiteGUI(Display):
         self.plotLayout.addWidget(self.plots)
 
     def _build_logger(self, log_dest: Path):
-        try:
-            module = importlib.import_module(
-                "lcls_tools.common.logger.file_logger"
-            )
-            custom_logger = module.custom_logger
+        import slac_measurements.logger.file_logger
 
-            return custom_logger(log_file=log_dest, name="wire_scan_logger")
-        except Exception:
-            logger = logging.getLogger("wire_scan_logger")
-            logger.handlers.clear()
-            file_handler = logging.FileHandler(log_dest)
-            file_handler.setFormatter(
-                logging.Formatter(
-                    "%(asctime)s - %(levelname)s - %(message)s"
-                )
-            )
-            logger.addHandler(file_handler)
-            logger.propagate = False
-            return logger
+        logger = logging.getLogger("wire_scan_logger")
+        logger.handlers.clear()
+        logger.propagate = False
+        return slac_measurements.logger.file_logger.custom_logger(
+            log_file=str(log_dest), name="wire_scan_logger"
+        )
 
     def _selected_wire_identifier(self) -> str:
         wire = self.measurement.wire
@@ -213,6 +211,37 @@ class WireScanSuiteGUI(Display):
             self.loaded_results[wire] = new_data
 
         self.dataChanged.emit()
+
+    def _on_fit_method_changed(self, method: str):
+        wire = self.measurement.wire
+        data = self._latest_result_for_wire(wire)
+        if data is None or not hasattr(data, "reanalyze"):
+            return
+
+        new_data = data.reanalyze(fitting_method=method)
+
+        if wire in self.suite.results and self.suite.results[wire]:
+            self.suite.results[wire][-1] = new_data
+        elif wire in self.loaded_results:
+            self.loaded_results[wire] = new_data
+
+        self.dataChanged.emit()
+
+    def save_config_callback(self):
+        self.measurement.save_config()
+        self.logger.info(
+            "Config saved for %s on %s",
+            self.measurement.wire,
+            self.nav.beampath,
+        )
+
+    def load_config_callback(self):
+        self.measurement._apply_config()
+        self.logger.info(
+            "Config loaded for %s on %s",
+            self.measurement.wire,
+            self.nav.beampath,
+        )
 
     def update_parameters(self):
         if self.measurement.active_wire is None:
@@ -248,6 +277,7 @@ class WireScanSuiteGUI(Display):
             beampath=self.nav.beampath,
             detector=self.measurement.detector or self.suite.detector,
             jitter_correction=self.measurement.jitter_enabled,
+            charge_normalization=self.measurement.charge_normalized,
         )
         self.thread.scan_complete.connect(self.on_scan_complete)
         self.thread.scan_failed.connect(self.on_scan_failure)
@@ -344,7 +374,7 @@ class WireScanSuiteGUI(Display):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select a file",
-            str(self.base_path),
+            str(_BASE_DIR),
         )
         if not file_path:
             return
@@ -369,37 +399,23 @@ class WireScanSuiteGUI(Display):
         detector = self.measurement.detector
         profile = self.plots.profile_control.profile
 
-        if self.nav.beampath.startswith("SC"):
-            logbook = "lcls2"
-        elif self.nav.beampath.startswith("CU"):
-            logbook = "lcls"
-        else:
-            self.logger.info(
-                "Could not determine logbook for beampath %s",
-                self.nav.beampath,
-            )
-            return
-
         title = f"{wire} Scan v. {detector} - {profile} Profile"
+        body = f"Wire scan for {wire} using {detector} with {profile} profile."
+
         image_path = self.suite.plotdir / "profile_plot.png"
         self.suite.view.save_fig_to_path(self.plots.profile_plot.figure, image_path)
 
         try:
-            elog = importlib.import_module("physicselog")
-        except Exception:
-            self.logger.info("physicselog is unavailable in this environment")
+            self.suite.post_to_logbook(
+                title=title,
+                body=body,
+                attachment=str(image_path),
+            )
+        except Exception as e:
+            self.logger.error("Failed to post to logbook: %s", e)
             return
 
-        elog.submit_entry(
-            logbook,
-            "Wire Scan GUI",
-            title,
-            "",
-            str(image_path),
-        )
-
-        logbook_label = "LCLS-II" if logbook == "lcls2" else "LCLS-I"
-        self.logger.info("Wire %s posted to %s logbook", profile, logbook_label)
+        self.logger.info("%s %s posted to logbook", wire, profile)
 
     def update_trajectory_plot(self):
         wire = self.measurement.wire

@@ -3,11 +3,10 @@
 import argparse
 import sys
 
-from .suite import WIRE_AREA_LOOKUP, Beampath
+from ._constants import VALID_BEAMPATHS, VALID_FIT_METHODS, WIRE_AREA_LOOKUP
 
 
 VALID_WIRES = sorted(WIRE_AREA_LOOKUP.keys())
-VALID_BEAMPATHS = ["CU_HXR", "CU_SXR", "SC_HXR", "SC_SXR", "SC_BSYD", "SC_DIAG0"]
 
 
 def _add_common_args(parser: argparse.ArgumentParser):
@@ -57,11 +56,17 @@ def cmd_run(args):
             wire=args.wire,
             scan_mode=args.scan_mode,
             rms_detector=args.rms_detector,
+            jitter_correction=args.jitter_correction,
+            charge_normalization=args.charge_normalization,
+            charge_toroid=args.charge_toroid,
         )
     else:
         suite.run_all(
             scan_mode=args.scan_mode,
             rms_detector=args.rms_detector,
+            jitter_correction=args.jitter_correction,
+            charge_normalization=args.charge_normalization,
+            charge_toroid=args.charge_toroid,
         )
 
 
@@ -113,6 +118,31 @@ def main(argv=None):
     p_run.add_argument(
         "--rms-detector", default=None, metavar="DET",
         help="Override detector for RMS calculation",
+    )
+    p_run.add_argument(
+        "--fitting-method", default=None, choices=VALID_FIT_METHODS,
+        help="Fitting method override (default: per-wire config or 'gaussian')",
+    )
+    p_run.add_argument(
+        "--charge-toroid", default=None, metavar="TORO",
+        help="Toroid for charge normalization (default: per-wire config)",
+    )
+    p_run.add_argument(
+        "--jitter-correction", action="store_true", default=None,
+        help="Apply orbit-fit jitter correction (default: per-wire config)",
+    )
+    p_run.add_argument(
+        "--no-jitter-correction", dest="jitter_correction", action="store_false",
+        help="Disable jitter correction regardless of per-wire config",
+    )
+    p_run.add_argument(
+        "--charge-normalization", action="store_true", default=None,
+        help="Normalize by per-pulse charge (default: per-wire config)",
+    )
+    p_run.add_argument(
+        "--no-charge-normalization", dest="charge_normalization",
+        action="store_false",
+        help="Disable charge normalization regardless of per-wire config",
     )
     p_run.set_defaults(func=cmd_run)
 

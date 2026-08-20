@@ -10,6 +10,7 @@ This sub-package composes WireScanSuite from separate concern modules:
 - _loader: load previously saved .h5 scan files
 - _diagnostics: CA cache inspection utilities
 - _jitter_compare: jitter correction comparison and FFT analysis
+- _logbook: post scan results to the SLAC physics logbook
 """
 
 from __future__ import annotations
@@ -18,15 +19,16 @@ from dataclasses import dataclass
 
 from ._base import WireScanSuiteBase
 from ._collect import CollectMixin
-from ._constants import (
+from slacwire._constants import (
     WIRE_AREA_LOOKUP,
-    Beampath,
+    VALID_BEAMPATHS,
     _BASE_DIR,
     _SCOPE_DATA_DIR,
     dated_output_dir,
 )
 from ._diagnostics import DiagnosticsMixin
 from ._jitter_compare import JitterCompareMixin
+from ._logbook import LogbookMixin
 from ._loader import LoaderMixin
 from ._motion import MotionTestMixin
 from ._results import ResultsMixin
@@ -34,7 +36,7 @@ from ._run import RunMixin
 
 
 @dataclass
-class WireScanSuite(JitterCompareMixin, DiagnosticsMixin, MotionTestMixin, CollectMixin, RunMixin, LoaderMixin, ResultsMixin, WireScanSuiteBase):
+class WireScanSuite(LogbookMixin, JitterCompareMixin, DiagnosticsMixin, MotionTestMixin, CollectMixin, RunMixin, LoaderMixin, ResultsMixin, WireScanSuiteBase):
     """High-level orchestration layer for wire scanner beam profile measurements.
 
     Transforms low-level EPICS device controls (wire positioning, data collection,
@@ -85,6 +87,6 @@ class WireScanSuite(JitterCompareMixin, DiagnosticsMixin, MotionTestMixin, Colle
 __all__ = [
     "WireScanSuite",
     "WIRE_AREA_LOOKUP",
-    "Beampath",
+    "VALID_BEAMPATHS",
     "dated_output_dir",
 ]
