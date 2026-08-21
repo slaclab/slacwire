@@ -154,6 +154,13 @@ class WireScanSuiteGUI(Display):
         self.ControlsLayout.insertWidget(1, self.measurement)
         self.measurement.wireChanged.emit(self.measurement.wire)
 
+        self.ui.verticalLayout_4.setStretch(0, 0)
+        self.ui.verticalLayout_4.setStretch(1, 1)
+        self.ui.verticalLayout_4.setStretch(2, 0)
+        self.ui.LeftLayout.setStretch(0, 0)
+        self.ui.LeftLayout.setStretch(1, 0)
+        self.ui.LeftLayout.setStretch(2, 1)
+
         self.ui.startButton.clicked.connect(self.start_scan_callback)
         self.ui.saveDataButton.clicked.connect(self.save_callback)
         self.ui.loadDataButton.clicked.connect(self.load_callback)
