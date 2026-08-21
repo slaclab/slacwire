@@ -130,8 +130,8 @@ class PlotWidget(QWidget):
         controls_row.addWidget(self.fit_control)
 
         layout = QVBoxLayout()
-        layout.addWidget(self.trajectory_plot)
-        layout.addWidget(self.profile_plot)
-        layout.addLayout(controls_row)
+        layout.addWidget(self.trajectory_plot, stretch=1)
+        layout.addWidget(self.profile_plot, stretch=1)
+        layout.addLayout(controls_row, stretch=0)
 
         self.setLayout(layout)
