@@ -46,6 +46,7 @@ class MeasurementWidget(QGroupBox):
         self.bpm_list.setSelectionMode(QListWidget.MultiSelection)
         self.jitter_checkbox = QCheckBox("Apply Jitter Correction")
         self.charge_checkbox = QCheckBox("Normalize by Charge")
+        self.toroid_combo = QComboBox()
 
         wire_row = QHBoxLayout()
         wire_row.addWidget(QLabel("Wire:"))
@@ -72,6 +73,10 @@ class MeasurementWidget(QGroupBox):
         separator2.setFrameShadow(QFrame.Sunken)
         layout.addWidget(separator2)
 
+        toroid_row = QHBoxLayout()
+        toroid_row.addWidget(QLabel("Toroid:"))
+        toroid_row.addWidget(self.toroid_combo)
+        layout.addLayout(toroid_row)
         layout.addWidget(self.charge_checkbox)
         self.setLayout(layout)
 
@@ -80,6 +85,7 @@ class MeasurementWidget(QGroupBox):
         self.wire_combo.currentTextChanged.connect(self.wireChanged)
         self.detector_combo.currentTextChanged.connect(self.detectorChanged)
         self.wireChanged.connect(self.update_detectors)
+        self.wireChanged.connect(self.update_toroids)
         self.wireChanged.connect(self.update_bpms)
 
         self.update_area("HTR")
@@ -116,6 +122,20 @@ class MeasurementWidget(QGroupBox):
             self.detector_combo.addItem(detector, area)
 
         self.detector_combo.blockSignals(False)
+
+    def update_toroids(self):
+        self.toroid_combo.blockSignals(True)
+        self.toroid_combo.clear()
+
+        if self.my_wire is None:
+            self.toroid_combo.blockSignals(False)
+            return
+
+        toroids = getattr(self.my_wire.metadata, "charge_toroids", [])
+        for toroid in toroids:
+            self.toroid_combo.addItem(toroid)
+
+        self.toroid_combo.blockSignals(False)
 
     def update_bpms(self):
         self.bpm_list.blockSignals(True)
