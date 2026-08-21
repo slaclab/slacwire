@@ -391,8 +391,18 @@ class WireScanSuiteGUI(Display):
             self.measurement.wire,
         )
         self.loaded_results[wire_name] = result
+        self._navigate_to_wire(wire_name)
         self.logger.info("Successfully loaded data for %s", wire_name)
         self.dataChanged.emit()
+
+    def _navigate_to_wire(self, wire_name: str):
+        for beampath, areas in self.nav.data.items():
+            for area, wires in areas.items():
+                if wire_name in wires:
+                    self.nav.beampath_combo.setCurrentText(beampath)
+                    self.nav.area_combo.setCurrentText(area)
+                    self.measurement.wire_combo.setCurrentText(wire_name)
+                    return
 
     def logbook_callback(self):
         wire = self.measurement.wire
