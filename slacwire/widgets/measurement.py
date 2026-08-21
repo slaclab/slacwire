@@ -1,5 +1,6 @@
 from qtpy.QtWidgets import (
-    QVBoxLayout, QComboBox, QGroupBox, QListWidget, QCheckBox,
+    QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox, QListWidget, QCheckBox,
+    QLabel,
 )
 from PyQt5.QtCore import pyqtSignal
 from collections import defaultdict
@@ -46,9 +47,17 @@ class MeasurementWidget(QGroupBox):
         self.jitter_checkbox = QCheckBox("Apply Jitter Correction")
         self.charge_checkbox = QCheckBox("Normalize by Charge")
 
+        wire_row = QHBoxLayout()
+        wire_row.addWidget(QLabel("Wire:"))
+        wire_row.addWidget(self.wire_combo)
+
+        detector_row = QHBoxLayout()
+        detector_row.addWidget(QLabel("Detector:"))
+        detector_row.addWidget(self.detector_combo)
+
         layout = QVBoxLayout()
-        layout.addWidget(self.wire_combo)
-        layout.addWidget(self.detector_combo)
+        layout.addLayout(wire_row)
+        layout.addLayout(detector_row)
         layout.addWidget(self.bpm_list)
         layout.addWidget(self.jitter_checkbox)
         layout.addWidget(self.charge_checkbox)
