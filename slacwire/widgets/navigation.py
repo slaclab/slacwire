@@ -25,7 +25,11 @@ class NavigationWidget(QGroupBox):
         self.setLayout(self.layout)
 
         self.beampath_combo = QComboBox()
+        self.beampath_combo.setToolTip(
+            "Accelerator beamline for wire scan measurements"
+        )
         self.area_combo = QComboBox()
+        self.area_combo.setToolTip("Machine area containing the wire scanners")
 
         self.layout.addWidget(self.beampath_combo)
         self.layout.addWidget(self.area_combo)

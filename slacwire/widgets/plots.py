@@ -121,9 +121,21 @@ class PlotWidget(QWidget):
         super().__init__(parent)
 
         self.trajectory_plot = MplCanvas()
+        self.trajectory_plot.setToolTip(
+            "Motor position and detector signal vs. time during scan"
+        )
         self.profile_plot = MplCanvas()
+        self.profile_plot.setToolTip(
+            "Fitted beam profile for the selected wire plane"
+        )
         self.profile_control = ProfileControl()
+        self.profile_control.setToolTip(
+            "Select which wire profile (x/y/u) to display"
+        )
         self.fit_control = FitControl()
+        self.fit_control.setToolTip(
+            "Choose the fitting method for profile analysis"
+        )
 
         controls_row = QHBoxLayout()
         controls_row.addWidget(self.profile_control)

@@ -41,6 +41,7 @@ class MeasurementWidget(QGroupBox):
 
         # UI Elements
         self.wire_combo = QComboBox()
+        self.wire_combo.setToolTip("Wire scanner device to measure")
         self.detector_combo = QComboBox()
         self.bpm_list = QListWidget()
         self.bpm_list.setSelectionMode(QListWidget.MultiSelection)
