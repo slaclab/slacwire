@@ -173,7 +173,11 @@ class WireScanSuiteGUI(Display):
         )
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
         self.ui.logBookButton.setToolTip(
-            "Post the current profile plot to the electronic logbook"
+            "Post the current profile plot to the e-log"
+        )
+        self.ui.logBookButton.setStyleSheet(
+            self.ui.logBookButton.styleSheet()
+            + " QToolTip { background-color: white; color: black; }"
         )
         self.ui.saveConfigButton.clicked.connect(self.save_config_callback)
         self.ui.saveConfigButton.setToolTip(
