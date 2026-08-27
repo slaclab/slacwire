@@ -350,7 +350,8 @@ QTextEdit::viewport {
      <item>
       <widget class="QPushButton" name="logBookButton">
        <property name="styleSheet">
-        <string notr="true">background-color: rgb(85, 255, 255);</string>
+        <string notr="true">QPushButton#logBookButton { background-color: rgb(85, 255, 255); }
+</string>
        </property>
        <property name="text">
         <string>Post to Logbook...</string>
