@@ -166,7 +166,13 @@ class WireScanSuiteGUI(Display):
         self.ui.loadDataButton.clicked.connect(self.load_callback)
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
         self.ui.saveConfigButton.clicked.connect(self.save_config_callback)
+        self.ui.saveConfigButton.setToolTip(
+            "Save current measurement settings for this wire/beampath"
+        )
         self.ui.loadConfigButton.clicked.connect(self.load_config_callback)
+        self.ui.loadConfigButton.setToolTip(
+            "Restore saved measurement settings for this wire/beampath"
+        )
 
         self.ui.statusUpdate.setReadOnly(True)
         log_dest = self.suite.outdir / f"WireScanLog-{datetime.now():%Y-%m-%d}.txt"

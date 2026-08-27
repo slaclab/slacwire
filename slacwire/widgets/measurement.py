@@ -44,13 +44,29 @@ class MeasurementWidget(QGroupBox):
         self.detector_combo = QComboBox()
         self.bpm_list = QListWidget()
         self.bpm_list.setSelectionMode(QListWidget.MultiSelection)
+        self.bpm_list.setToolTip(
+            "Select BPMs to use for beam jitter subtraction."
+            " No selection defaults to use all."
+        )
         self.jitter_checkbox = QCheckBox("Apply Jitter Correction")
+        self.jitter_checkbox.setToolTip(
+            "Subtract correlated beam jitter from wire scan profiles"
+            " using selected BPMs"
+        )
         self.charge_checkbox = QCheckBox("Normalize by Charge")
+        self.charge_checkbox.setToolTip(
+            "Normalize wire scan signal by bunch charge from selected toroid"
+        )
         self.toroid_combo = QComboBox()
+        self.toroid_combo.setToolTip("Toroid used for bunch charge measurement")
 
         wire_row = QHBoxLayout()
         wire_row.addWidget(QLabel("Wire:"))
         wire_row.addWidget(self.wire_combo)
+
+        self.detector_combo.setToolTip(
+            "Loss monitor used to measure beam profile during scan"
+        )
 
         detector_row = QHBoxLayout()
         detector_row.addWidget(QLabel("Detector:"))
