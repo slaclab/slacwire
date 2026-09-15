@@ -152,8 +152,6 @@ class RunMixin:
             scan_mode=scan_mode,
             rms_detector=rms_detector,
             jitter_correction=jitter_correction,
-            charge_normalization=charge_normalization,
-            charge_toroid=charge_toroid,
         )
 
     def _run_device_scan(
