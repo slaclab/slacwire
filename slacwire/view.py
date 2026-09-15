@@ -19,7 +19,9 @@ class WireScanView:
         """
         traj = np.asarray(data.collection_result.raw_data[wire])
         det = np.asarray(data.collection_result.raw_data[detector])
-        scan_points = np.arange(len(traj))
+        n = min(len(traj), len(det))
+        traj, det = traj[:n], det[:n]
+        scan_points = np.arange(n)
         detector_label = (
             "% Beam Loss" if detector == "TMITLOSS" else f"{detector} Counts"
         )
@@ -155,7 +157,9 @@ class WireScanView:
         """Draw trajectory into an existing axes."""
         traj = np.asarray(data.collection_result.raw_data[wire])
         det = np.asarray(data.collection_result.raw_data[detector])
-        x = np.arange(len(traj))
+        n = min(len(traj), len(det))
+        traj, det = traj[:n], det[:n]
+        x = np.arange(n)
 
         units = "% Loss" if detector == "TMITLOSS" else "Counts"
 
@@ -332,7 +336,9 @@ class WireScanView:
         """Generate a trajectory plot for wire position and detector counts."""
         traj = np.asarray(data.collection_result.raw_data[wire])
         det = np.asarray(data.collection_result.raw_data[detector])
-        x = np.arange(len(traj))
+        n = min(len(traj), len(det))
+        traj, det = traj[:n], det[:n]
+        x = np.arange(n)
 
         fig = plt.figure()
         ax1 = fig.add_subplot(1, 1, 1)
