@@ -1,5 +1,6 @@
 from qtpy.QtWidgets import (
-    QVBoxLayout, QComboBox, QGroupBox, QListWidget, QCheckBox,
+    QVBoxLayout, QHBoxLayout, QComboBox, QGroupBox, QListWidget, QCheckBox,
+    QLabel, QFrame,
 )
 from PyQt5.QtCore import pyqtSignal
 from collections import defaultdict
@@ -40,17 +41,59 @@ class MeasurementWidget(QGroupBox):
 
         # UI Elements
         self.wire_combo = QComboBox()
+        self.wire_combo.setToolTip("Wire scanner device to measure")
         self.detector_combo = QComboBox()
         self.bpm_list = QListWidget()
         self.bpm_list.setSelectionMode(QListWidget.MultiSelection)
+        self.bpm_list.setToolTip(
+            "Select BPMs to use for beam jitter subtraction."
+            " No selection defaults to use all."
+        )
         self.jitter_checkbox = QCheckBox("Apply Jitter Correction")
+        self.jitter_checkbox.setToolTip(
+            "Subtract correlated beam jitter from wire scan profiles"
+            " using selected BPMs"
+        )
         self.charge_checkbox = QCheckBox("Normalize by Charge")
+        self.charge_checkbox.setToolTip(
+            "Normalize wire scan signal by bunch charge from selected toroid"
+        )
+        self.toroid_combo = QComboBox()
+        self.toroid_combo.setToolTip("Toroid used for bunch charge measurement")
+
+        wire_row = QHBoxLayout()
+        wire_row.addWidget(QLabel("Wire:"))
+        wire_row.addWidget(self.wire_combo)
+
+        self.detector_combo.setToolTip(
+            "Loss monitor used to measure beam profile during scan"
+        )
+
+        detector_row = QHBoxLayout()
+        detector_row.addWidget(QLabel("Detector:"))
+        detector_row.addWidget(self.detector_combo)
+
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
 
         layout = QVBoxLayout()
-        layout.addWidget(self.wire_combo)
-        layout.addWidget(self.detector_combo)
+        layout.addLayout(wire_row)
+        layout.addLayout(detector_row)
+        layout.addWidget(separator)
+        layout.addWidget(QLabel("Jitter BPMs:"))
         layout.addWidget(self.bpm_list)
         layout.addWidget(self.jitter_checkbox)
+
+        separator2 = QFrame()
+        separator2.setFrameShape(QFrame.HLine)
+        separator2.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(separator2)
+
+        toroid_row = QHBoxLayout()
+        toroid_row.addWidget(QLabel("Toroid:"))
+        toroid_row.addWidget(self.toroid_combo)
+        layout.addLayout(toroid_row)
         layout.addWidget(self.charge_checkbox)
         self.setLayout(layout)
 
@@ -59,6 +102,7 @@ class MeasurementWidget(QGroupBox):
         self.wire_combo.currentTextChanged.connect(self.wireChanged)
         self.detector_combo.currentTextChanged.connect(self.detectorChanged)
         self.wireChanged.connect(self.update_detectors)
+        self.wireChanged.connect(self.update_toroids)
         self.wireChanged.connect(self.update_bpms)
 
         self.update_area("HTR")
@@ -95,6 +139,20 @@ class MeasurementWidget(QGroupBox):
             self.detector_combo.addItem(detector, area)
 
         self.detector_combo.blockSignals(False)
+
+    def update_toroids(self):
+        self.toroid_combo.blockSignals(True)
+        self.toroid_combo.clear()
+
+        if self.my_wire is None:
+            self.toroid_combo.blockSignals(False)
+            return
+
+        toroids = getattr(self.my_wire.metadata, "charge_toroids", [])
+        for toroid in toroids:
+            self.toroid_combo.addItem(toroid)
+
+        self.toroid_combo.blockSignals(False)
 
     def update_bpms(self):
         self.bpm_list.blockSignals(True)

@@ -162,13 +162,41 @@ class WireScanSuiteGUI(Display):
         self.ui.LeftLayout.setStretch(2, 1)
 
         self.ui.startButton.clicked.connect(self.start_scan_callback)
+        self.ui.startButton.setToolTip(
+            "Begin an on-the-fly wire scan for the selected device"
+        )
         self.ui.saveDataButton.clicked.connect(self.save_callback)
+        self.ui.saveDataButton.setToolTip("Export scan results to an HDF5 file")
         self.ui.loadDataButton.clicked.connect(self.load_callback)
+        self.ui.loadDataButton.setToolTip(
+            "Import a previously saved scan from file"
+        )
         self.ui.logBookButton.clicked.connect(self.logbook_callback)
+        self.ui.logBookButton.setToolTip(
+            "Post the current profile plot to the e-log"
+        )
+        self.ui.logBookButton.setStyleSheet(
+            self.ui.logBookButton.styleSheet()
+            + " QToolTip { background-color: white; color: black; }"
+        )
         self.ui.saveConfigButton.clicked.connect(self.save_config_callback)
+        self.ui.saveConfigButton.setToolTip(
+            "Save current measurement settings for this wire/beampath"
+        )
         self.ui.loadConfigButton.clicked.connect(self.load_config_callback)
+        self.ui.loadConfigButton.setToolTip(
+            "Restore saved measurement settings for this wire/beampath"
+        )
+
+        self.ui.ParametersGroupBox.setToolTip(
+            "Live EPICS readbacks for the selected wire scanner"
+        )
+        self.ui.abortButton.setToolTip(
+            "Stop the current wire scan in progress"
+        )
 
         self.ui.statusUpdate.setReadOnly(True)
+        self.ui.statusUpdate.setToolTip("Scan activity log for this session")
         log_dest = self.suite.outdir / f"WireScanLog-{datetime.now():%Y-%m-%d}.txt"
         self.logger = self._build_logger(log_dest)
         self.logger.setLevel(logging.INFO)
