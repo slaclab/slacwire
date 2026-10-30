@@ -29,6 +29,10 @@ def _build_fake_data(detector="PMT29150"):
         sigma=1.2,
         amplitude=20.0,
         offset=2.0,
+        mean_err=0.1,
+        sigma_err=0.05,
+        amplitude_err=0.5,
+        offset_err=0.2,
     )
     return SimpleNamespace(
         collection_result=SimpleNamespace(raw_data={"WS28144": [0, 1, 2], detector: [5, 8, 6]}),

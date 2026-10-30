@@ -212,6 +212,44 @@ class TestWireScanSuite(unittest.TestCase):
                 mock_run_device_scan.call_args.kwargs["method"], "step"
             )
 
+    def test_wires_and_devices_sorted_by_z_after_reassignment(self):
+        z = {"WS27644": 2.0, "WS28144": 3.0, "WS28444": 4.0, "WS28744": 5.0}
+
+        def make(wire):
+            device = _FakeDevice(name=wire)
+            device.sum_l_meters = z[wire]
+            return device
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()), \
+                    patch.object(WireScanSuite, "_make_device", side_effect=make) as mock_make:
+                suite = WireScanSuite(wires=["WS28744"], outdir=Path(tmp))
+                original = suite.devices["WS28744"]
+
+                suite.wires = ["WS28744", "WS28444", "WS27644", "WS28144"]
+
+                expected = ["WS27644", "WS28144", "WS28444", "WS28744"]
+                self.assertEqual(suite.wires, expected)
+                self.assertEqual(list(suite.devices), expected)
+                self.assertEqual([d.name for d in suite.devices.values()], expected)
+                self.assertIs(suite.devices["WS28744"], original)
+                self.assertEqual(mock_make.call_count, 4)
+
+                suite.set_wires(["WS28144"])
+                self.assertEqual(suite.wires, ["WS28144"])
+                self.assertEqual(list(suite.devices), ["WS28144"])
+
+    def test_repr_is_compact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
+                suite = WireScanSuite(wires=[], outdir=Path(tmp))
+            suite.results = {"WS28144": [object(), object()], "WS28444": []}
+            self.assertEqual(
+                repr(suite),
+                "WireScanSuite(beampath='CU_HXR', wires=[], detector=None, "
+                "results={'WS28144': 2})",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

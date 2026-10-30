@@ -99,10 +99,10 @@ class WireScanView:
         ax.grid(True, which="both", linestyle="--", alpha=0.6)
 
         params_text = (
-            f"Mean: {fit_result.mean:.1f} µm\n"
-            f"Sigma: {fit_result.sigma:.1f} µm\n"
-            f"Amplitude: {fit_result.amplitude:.1f} {amp_off_units}\n"
-            f"Offset: {fit_result.offset:.1f} {amp_off_units}"
+            f"Mean: {fit_result.mean:.1f} ± {fit_result.mean_err:.1f} µm\n"
+            f"Sigma: {fit_result.sigma:.1f} ± {fit_result.sigma_err:.1f} µm\n"
+            f"Amplitude: {fit_result.amplitude:.1f} ± {fit_result.amplitude_err:.1f} {amp_off_units}\n"
+            f"Offset: {fit_result.offset:.1f} ± {fit_result.offset_err:.1f} {amp_off_units}"
         )
         ax.text(
             0.95,
@@ -225,9 +225,9 @@ class WireScanView:
         ax.legend(loc="upper right", fontsize=8)
 
         params_text = (
-            f"σ={fit.sigma:.1f}\n"
-            f"µ={fit.mean:.1f}\n"
-            f"A={fit.amplitude:.1f}"
+            f"σ={fit.sigma:.1f}±{fit.sigma_err:.1f}\n"
+            f"µ={fit.mean:.1f}±{fit.mean_err:.1f}\n"
+            f"A={fit.amplitude:.1f}±{fit.amplitude_err:.1f}"
         )
         ax.text(
             0.95, 0.55, params_text,
@@ -438,10 +438,10 @@ class WireScanView:
         ax.set_title(title)
 
         params_text = (
-            f"Mean: {fit.mean:.1f} um\n"
-            f"Sigma: {fit.sigma:.1f} um\n"
-            f"Amp: {fit.amplitude:.1f} {units}\n"
-            f"Offset: {fit.offset:.1f} {units}"
+            f"Mean: {fit.mean:.1f} ± {fit.mean_err:.1f} um\n"
+            f"Sigma: {fit.sigma:.1f} ± {fit.sigma_err:.1f} um\n"
+            f"Amp: {fit.amplitude:.1f} ± {fit.amplitude_err:.1f} {units}\n"
+            f"Offset: {fit.offset:.1f} ± {fit.offset_err:.1f} {units}"
         )
         ax.text(
             0.95,

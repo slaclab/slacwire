@@ -24,7 +24,9 @@ def _fit_profile(x_beam: np.ndarray, detector_values: np.ndarray) -> dict:
     try:
         fp = gaussian.fit(pos=x_sorted, data=y_sorted)
         fit_x = np.linspace(x_sorted.min(), x_sorted.max(), 200)
-        fit_params = {k: v for k, v in fp.items() if k != "error"}
+        fit_params = {
+            k: v for k, v in fp.items() if k != "error" and not k.endswith("_err")
+        }
         fit_curve = gaussian.curve(x=fit_x, **fit_params)
         fit_sigma = fp["sigma"]
         fit_amplitude = fp["amp"]

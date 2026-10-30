@@ -10,6 +10,7 @@ Protocol
 Commands (stdin, one per line):
     SCAN <wire> [<detector>]   Navigate to wire, start scan.
     SELECT <wire> [<detector>] Navigate to wire without scanning.
+    GET <wire>                 Save the wire's current result to H5 (no scan).
     STATUS                     Print current wire name and scan state.
     QUIT                       Close the GUI.
 

@@ -7,10 +7,11 @@ from pathlib import Path
 import yaml
 from pydm import Display
 from PyQt5.QtCore import QThread, pyqtSignal
-from qtpy.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QFileDialog, QVBoxLayout, QWidget
 
 from slac_devices.reader import create_wire
 from slacwire._constants import VALID_BEAMPATHS, _BASE_DIR
+from slacwire.widgets.error_dialog import ErrorDialog
 from slacwire.widgets.measurement import MeasurementWidget, extract_measurement_data
 from slacwire.widgets.navigation import NavigationWidget
 from slacwire.widgets.plots import PlotWidget
@@ -525,14 +526,13 @@ class WireScanSuiteGUI(Display):
             self.ui.startButton.setEnabled(True)
             return
 
-        dialog = QMessageBox(self)
-        dialog.setIcon(QMessageBox.Critical)
-        dialog.setWindowTitle("Scan Failed")
-        dialog.setText(f"Scan failed for {wire_identifier}")
-        dialog.setInformativeText(message)
-        if tb:
-            dialog.setDetailedText(tb)
-        dialog.setStandardButtons(QMessageBox.Ok)
+        dialog = ErrorDialog(
+            title="Scan Failed",
+            text=f"Scan failed for {wire_identifier}",
+            message=message,
+            tb=tb,
+            parent=self,
+        )
         dialog.exec_()
         self.ui.startButton.setEnabled(True)
 
@@ -574,6 +574,25 @@ class WireScanSuiteGUI(Display):
             detector = parts[2] if len(parts) > 2 else None
             if self._navigate_and_select(wire, detector):
                 print(f"SELECTED:{wire}", flush=True)
+
+        elif cmd == "GET":
+            if not self.ui.startButton.isEnabled():
+                print("BUSY", flush=True)
+                return
+            if len(parts) < 2:
+                print("ERROR:GET requires a wire name", flush=True)
+                return
+            wire = parts[1]
+            data = self._latest_result_for_wire(wire)
+            if data is None:
+                print(f"ERROR:No data available for {wire}", flush=True)
+            else:
+                path = self._save_data_to_file(data, f"Query_{wire}")
+                if path:
+                    print(f"H5_PATH:{path}", flush=True)
+                else:
+                    print(f"ERROR:Failed to save data for {wire}", flush=True)
+            print("READY", flush=True)
 
         elif cmd == "STATUS":
             wire = self.measurement.wire or "none"
