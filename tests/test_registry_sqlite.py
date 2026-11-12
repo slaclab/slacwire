@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import sqlite3
 import tempfile
@@ -8,6 +9,8 @@ from slacwire.registry.registry_sqlite import (
     build_wire_name_map,
     convert_run_registry_json_to_sqlite,
 )
+
+HAS_SLAC_DB = importlib.util.find_spec("slac_db") is not None
 
 
 class TestRegistrySQLiteConversion(unittest.TestCase):
@@ -42,6 +45,7 @@ class TestRegistrySQLiteConversion(unittest.TestCase):
             # Unmapped names pass through unchanged
             self.assertEqual(wires, ["WS28144", "WS28144", "WIRE:FAKE:999"])
 
+    @unittest.skipUnless(HAS_SLAC_DB, "requires slac_db device database")
     def test_build_wire_name_map_prefers_active_devices(self):
         name_map = build_wire_name_map()
         # WIRE:LI28:144 is shared with inactive legacy device WS144

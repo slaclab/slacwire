@@ -10,7 +10,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from qtpy.QtWidgets import QFileDialog, QVBoxLayout, QWidget
 
 from slac_devices.reader import create_wire
-from slacwire._constants import VALID_BEAMPATHS, _BASE_DIR, gui_scan_mode
+from slacwire._constants import VALID_BEAMPATHS, _BASE_DIR, default_scan_mode
 from slacwire.widgets.error_dialog import ErrorDialog
 from slacwire.widgets.measurement import MeasurementWidget, extract_measurement_data
 from slacwire.widgets.navigation import NavigationWidget
@@ -450,7 +450,7 @@ class WireScanSuiteGUI(Display):
         self.suite.show = False       # GUI renders plots after thread completes
         self.suite.save_plots = False  # GUI renders plots after thread completes
 
-        scan_mode = gui_scan_mode(wire_identifier)
+        scan_mode = default_scan_mode(wire_identifier)
         self.logger.info(
             "Starting %s scan for %s",
             "on-the-fly" if scan_mode == "otf" else "step",

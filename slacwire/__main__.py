@@ -3,10 +3,23 @@
 import argparse
 import sys
 
-from ._constants import VALID_BEAMPATHS, VALID_FIT_METHODS, WIRE_AREA_LOOKUP
+from ._constants import (
+    DEFAULT_SCAN_MODE,
+    SCAN_MODE_OVERRIDES,
+    VALID_BEAMPATHS,
+    VALID_FIT_METHODS,
+    WIRE_AREA_LOOKUP,
+)
 
 
 VALID_WIRES = sorted(WIRE_AREA_LOOKUP.keys())
+
+_SCAN_MODE_HELP = (
+    "Scan mode: 'otf' (on-the-fly) or 'step'. Default: per-wire "
+    f"({DEFAULT_SCAN_MODE}, except "
+    + ", ".join(f"{w}={m}" for w, m in sorted(SCAN_MODE_OVERRIDES.items()))
+    + ")"
+)
 
 
 def _add_common_args(parser: argparse.ArgumentParser):
@@ -77,7 +90,7 @@ def cmd_collect(args):
 
 def cmd_motion_test(args):
     suite = _build_suite(args)
-    result = suite.motion_test(wire=args.wire)
+    result = suite.motion_test(wire=args.wire, scan_mode=args.scan_mode)
     print(result)
 
 
@@ -112,8 +125,8 @@ def main(argv=None):
         help="Single wire to scan. If omitted, scans all configured wires.",
     )
     p_run.add_argument(
-        "--scan-mode", default="otf", choices=["otf", "step"],
-        help="Scan mode: 'otf' (on-the-fly) or 'step' (default: otf)",
+        "--scan-mode", default=None, choices=["otf", "step"],
+        help=_SCAN_MODE_HELP,
     )
     p_run.add_argument(
         "--rms-detector", default=None, metavar="DET",
@@ -158,8 +171,8 @@ def main(argv=None):
         help="Wire to collect from (e.g., WS28144)",
     )
     p_collect.add_argument(
-        "--scan-mode", default="otf", choices=["otf", "step"],
-        help="Scan mode: 'otf' (on-the-fly) or 'step' (default: otf)",
+        "--scan-mode", default=None, choices=["otf", "step"],
+        help=_SCAN_MODE_HELP,
     )
     p_collect.set_defaults(func=cmd_collect)
 
@@ -173,6 +186,10 @@ def main(argv=None):
     p_motion.add_argument(
         "wire", metavar="WIRE",
         help="Wire to test (e.g., WS28144)",
+    )
+    p_motion.add_argument(
+        "--scan-mode", default=None, choices=["otf", "step"],
+        help=_SCAN_MODE_HELP,
     )
     p_motion.set_defaults(func=cmd_motion_test)
 

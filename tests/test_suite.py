@@ -212,6 +212,81 @@ class TestWireScanSuite(unittest.TestCase):
                 mock_run_device_scan.call_args.kwargs["method"], "step"
             )
 
+    @patch.object(WireScanSuite, "_make_device")
+    @patch.object(WireScanSuite, "_run_device_scan")
+    def test_run_single_ws02_defaults_to_step_but_honors_explicit_mode(
+        self, mock_run_device_scan, mock_make_device
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
+                suite = WireScanSuite(wires=[], outdir=Path(tmp))
+
+            mock_make_device.return_value = _FakeDevice(beam_rate=1000)
+            suite.run_single("WS02")
+            self.assertEqual(mock_run_device_scan.call_args.kwargs["method"], "step")
+            self.assertEqual(
+                mock_run_device_scan.call_args.kwargs["file_prefix"], "Step"
+            )
+
+            mock_run_device_scan.reset_mock()
+            suite.run_single("WS02", scan_mode="otf")
+            self.assertEqual(mock_run_device_scan.call_args.kwargs["method"], "otf")
+
+    @patch.object(WireScanSuite, "_make_device")
+    @patch.object(WireScanSuite, "_run_device_scan")
+    def test_collect_single_ws02_defaults_to_step(
+        self, mock_run_device_scan, mock_make_device
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()):
+                suite = WireScanSuite(wires=[], outdir=Path(tmp))
+
+            mock_make_device.return_value = _FakeDevice(beam_rate=1000)
+            suite.collect_single("WS02")
+            self.assertEqual(
+                mock_run_device_scan.call_args.kwargs["method"], "step_collection"
+            )
+
+    @patch.object(WireScanSuite, "run_single")
+    def test_run_all_resolves_scan_mode_per_wire(self, mock_run_single):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(WireScanSuite, "_build_view", return_value=MagicMock()), \
+                    patch.object(WireScanSuite, "_make_device",
+                                 side_effect=lambda w: _FakeDevice(name=w)):
+                suite = WireScanSuite(wires=["WS01", "WS02"], outdir=Path(tmp))
+                suite.run_all(multi_view=False)
+
+            # run_all forwards None so run_single applies each wire's default
+            for call in mock_run_single.call_args_list:
+                self.assertIsNone(call.kwargs["scan_mode"])
+
+    def test_cli_scan_mode_defaults_to_none(self):
+        from slacwire import __main__ as cli
+
+        with patch.object(cli, "cmd_run") as mock_cmd_run, \
+                patch.object(cli, "cmd_collect") as mock_cmd_collect, \
+                patch.object(cli, "cmd_motion_test") as mock_cmd_motion:
+            for argv, mock_cmd in (
+                (["run", "--wire", "WS02"], mock_cmd_run),
+                (["collect", "WS02"], mock_cmd_collect),
+                (["motion-test", "WS02"], mock_cmd_motion),
+            ):
+                try:
+                    cli.main(argv)
+                except SystemExit:
+                    pass
+                self.assertIsNone(mock_cmd.call_args.args[0].scan_mode, argv)
+
+    def test_resolve_scan_mode(self):
+        from slacwire._constants import resolve_scan_mode
+
+        self.assertEqual(resolve_scan_mode("WS02"), "step")
+        self.assertEqual(resolve_scan_mode("WS02:DL1"), "step")
+        self.assertEqual(resolve_scan_mode("WS01"), "otf")
+        self.assertEqual(resolve_scan_mode("WS02", "OTF"), "otf")
+        with self.assertRaises(ValueError):
+            resolve_scan_mode("WS01", "bogus")
+
     def test_wires_and_devices_sorted_by_z_after_reassignment(self):
         z = {"WS27644": 2.0, "WS28144": 3.0, "WS28444": 4.0, "WS28744": 5.0}
 

@@ -7,11 +7,13 @@ The generated schema is aligned with reporting requirements documented in
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
 
 TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
 
@@ -55,8 +57,17 @@ def build_wire_name_map() -> dict[str, str]:
     (``WIRE:LI28:144``) while the Python GUI reports MAD names (``WS28144``).
     Only active devices are used because some EPICS names are shared with
     inactive legacy entries (e.g. ``WIRE:LI28:144`` -> ``WS144``).
+
+    Returns an empty map (names pass through unchanged) if ``slac_db`` is
+    not installed.
     """
-    from slac_db.device import get_attribute, get_devices
+    try:
+        from slac_db.device import get_attribute, get_devices
+    except ImportError:
+        logger.warning(
+            "slac_db not available; wire names will not be mapped EPICS -> MAD"
+        )
+        return {}
 
     return {
         get_attribute(name, "cs_name"): name

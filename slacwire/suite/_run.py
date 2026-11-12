@@ -5,6 +5,7 @@ from datetime import datetime
 
 from slac_measurements.wires.scan import WireBeamProfileMeasurement
 
+from slacwire._constants import resolve_scan_mode
 from slacwire.config import get_wire_config
 
 logger = logging.getLogger("wire_scan_logger")
@@ -15,7 +16,7 @@ class RunMixin:
 
     def run_all(
         self,
-        scan_mode: str = "otf",
+        scan_mode: str | None = None,
         rms_detector: str | None = None,
         multi_view: bool = True,
         jitter_correction: bool | None = None,
@@ -25,7 +26,8 @@ class RunMixin:
         """Run all configured wires in the requested scan mode.
 
         Args:
-            scan_mode: "otf" (on-the-fly) or "step". Default "otf".
+            scan_mode: "otf" (on-the-fly) or "step". If None, each wire uses
+                its default from ``SCAN_MODE_OVERRIDES`` ("otf" unless listed).
             rms_detector: Override detector for RMS calculation. If None,
                 uses the device's default detector.
             multi_view: If True, show a single combined 2x2 figure per wire
@@ -41,10 +43,12 @@ class RunMixin:
         if multi_view:
             self.show = False
 
-        file_prefix = "OTF" if scan_mode.lower() == "otf" else "Step"
         failed_wires: list[tuple[str, Exception]] = []
 
         for wire in self.wires:
+            file_prefix = (
+                "OTF" if resolve_scan_mode(wire, scan_mode) == "otf" else "Step"
+            )
             try:
                 self.run_single(
                     wire=wire,
@@ -92,7 +96,7 @@ class RunMixin:
     def run_single(
         self,
         wire: str,
-        scan_mode: str = "otf",
+        scan_mode: str | None = None,
         rms_detector: str | None = None,
         jitter_correction: bool | None = None,
         charge_normalization: bool | None = None,
@@ -102,7 +106,8 @@ class RunMixin:
 
         Args:
             wire: Wire name (e.g. "WS28144"). Must exist in WIRE_AREA_LOOKUP.
-            scan_mode: "otf" (on-the-fly) or "step". Default "otf".
+            scan_mode: "otf" (on-the-fly) or "step". If None, uses the wire's
+                default from ``SCAN_MODE_OVERRIDES`` ("otf" unless listed).
             rms_detector: Override detector for RMS calculation. If None,
                 uses the device's default detector.
             jitter_correction: If True, apply orbit-fit jitter correction.
@@ -113,13 +118,8 @@ class RunMixin:
                 If None, uses per-wire config or first available from metadata.
         """
         wire_name, _ = self._resolve_wire_and_area(wire)
+        mode = resolve_scan_mode(wire_name, scan_mode)
         device = self._get_device(wire_name)
-        mode = scan_mode.lower()
-
-        if mode not in ("otf", "step"):
-            raise ValueError(
-                f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
-            )
 
         config = get_wire_config(wire_name, self.beampath)
         resolved_jitter = (

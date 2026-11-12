@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 
+from slacwire._constants import resolve_scan_mode
+
 logger = logging.getLogger("wire_scan_logger")
 
 
@@ -11,22 +13,18 @@ class CollectMixin:
     def collect_single(
         self,
         wire: str,
-        scan_mode: str = "otf",
+        scan_mode: str | None = None,
     ):
         """Collect raw data for a single wire without analysis.
 
         Args:
             wire: Wire name (e.g. "WS28144"). Must exist in WIRE_AREA_LOOKUP.
-            scan_mode: "otf" (on-the-fly) or "step". Default "otf".
+            scan_mode: "otf" (on-the-fly) or "step". If None, uses the wire's
+                default from ``SCAN_MODE_OVERRIDES`` ("otf" unless listed).
         """
         wire_name, _ = self._resolve_wire_and_area(wire)
+        mode = resolve_scan_mode(wire_name, scan_mode)
         device = self._get_device(wire_name)
-        mode = scan_mode.lower()
-
-        if mode not in ("otf", "step"):
-            raise ValueError(
-                f"Invalid scan_mode '{scan_mode}'. Use 'otf' or 'step'."
-            )
 
         self._run_device_scan(
             device=device,
