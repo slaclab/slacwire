@@ -1,0 +1,532 @@
+{
+ "bpms": {
+  "BPM25201": {
+   "control_name": "BPMS:LI25:201",
+   "z": 435.999
+  },
+  "BPM25301": {
+   "control_name": "BPMS:LI25:301",
+   "z": 448.343
+  },
+  "BPM25401": {
+   "control_name": "BPMS:LI25:401",
+   "z": 460.687
+  },
+  "BPM25501": {
+   "control_name": "BPMS:LI25:501",
+   "z": 473.032
+  },
+  "BPM25601": {
+   "control_name": "BPMS:LI25:601",
+   "z": 485.376
+  },
+  "BPM25701": {
+   "control_name": "BPMS:LI25:701",
+   "z": 497.721
+  },
+  "BPM25801": {
+   "control_name": "BPMS:LI25:801",
+   "z": 510.065
+  },
+  "BPM25901": {
+   "control_name": "BPMS:LI25:901",
+   "z": 522.65
+  },
+  "BPM26201": {
+   "control_name": "BPMS:LI26:201",
+   "z": 537.599
+  },
+  "BPM26301": {
+   "control_name": "BPMS:LI26:301",
+   "z": 549.943
+  },
+  "BPM26401": {
+   "control_name": "BPMS:LI26:401",
+   "z": 562.287
+  },
+  "BPM26501": {
+   "control_name": "BPMS:LI26:501",
+   "z": 574.632
+  },
+  "BPM26601": {
+   "control_name": "BPMS:LI26:601",
+   "z": 586.976
+  },
+  "BPM26701": {
+   "control_name": "BPMS:LI26:701",
+   "z": 599.321
+  },
+  "BPM26801": {
+   "control_name": "BPMS:LI26:801",
+   "z": 611.665
+  },
+  "BPM26901": {
+   "control_name": "BPMS:LI26:901",
+   "z": 624.25
+  },
+  "BPM27201": {
+   "control_name": "BPMS:LI27:201",
+   "z": 639.199
+  },
+  "BPM27301": {
+   "control_name": "BPMS:LI27:301",
+   "z": 651.543
+  },
+  "BPM27401": {
+   "control_name": "BPMS:LI27:401",
+   "z": 663.887
+  },
+  "BPM27501": {
+   "control_name": "BPMS:LI27:501",
+   "z": 676.232
+  },
+  "BPM27601": {
+   "control_name": "BPMS:LI27:601",
+   "z": 688.576
+  },
+  "BPM27701": {
+   "control_name": "BPMS:LI27:701",
+   "z": 700.921
+  },
+  "BPM27801": {
+   "control_name": "BPMS:LI27:801",
+   "z": 713.265
+  },
+  "BPM27901": {
+   "control_name": "BPMS:LI27:901",
+   "z": 725.85
+  },
+  "BPM28201": {
+   "control_name": "BPMS:LI28:201",
+   "z": 740.799
+  },
+  "BPM28301": {
+   "control_name": "BPMS:LI28:301",
+   "z": 753.143
+  },
+  "BPM28401": {
+   "control_name": "BPMS:LI28:401",
+   "z": 765.487
+  },
+  "BPM28501": {
+   "control_name": "BPMS:LI28:501",
+   "z": 777.832
+  },
+  "BPM28601": {
+   "control_name": "BPMS:LI28:601",
+   "z": 790.176
+  },
+  "BPM28701": {
+   "control_name": "BPMS:LI28:701",
+   "z": 802.521
+  },
+  "BPM28801": {
+   "control_name": "BPMS:LI28:801",
+   "z": 814.865
+  },
+  "BPM28901": {
+   "control_name": "BPMS:LI28:901",
+   "z": 827.45
+  },
+  "BPM29201": {
+   "control_name": "BPMS:LI29:201",
+   "z": 842.399
+  },
+  "BPM29301": {
+   "control_name": "BPMS:LI29:301",
+   "z": 854.743
+  },
+  "BPM29401": {
+   "control_name": "BPMS:LI29:401",
+   "z": 867.087
+  },
+  "BPM29501": {
+   "control_name": "BPMS:LI29:501",
+   "z": 879.432
+  },
+  "BPM29601": {
+   "control_name": "BPMS:LI29:601",
+   "z": 891.776
+  },
+  "BPM29701": {
+   "control_name": "BPMS:LI29:701",
+   "z": 904.121
+  },
+  "BPM29801": {
+   "control_name": "BPMS:LI29:801",
+   "z": 916.465
+  },
+  "BPM29901": {
+   "control_name": "BPMS:LI29:901",
+   "z": 929.129
+  },
+  "BPM30201": {
+   "control_name": "BPMS:LI30:201",
+   "z": 943.999
+  },
+  "BPM30301": {
+   "control_name": "BPMS:LI30:301",
+   "z": 956.343
+  },
+  "BPM30401": {
+   "control_name": "BPMS:LI30:401",
+   "z": 968.687
+  },
+  "BPM30501": {
+   "control_name": "BPMS:LI30:501",
+   "z": 981.032
+  },
+  "BPM30601": {
+   "control_name": "BPMS:LI30:601",
+   "z": 993.175
+  },
+  "BPM30701": {
+   "control_name": "BPMS:LI30:701",
+   "z": 1005.535
+  },
+  "BPM30801": {
+   "control_name": "BPMS:LI30:801",
+   "z": 1017.865
+  }
+ },
+ "charge_toroids": [
+  "BPM27201"
+ ],
+ "default_detector": "PMT29150:LI29",
+ "jitter_bpms": [
+  "BPM27201",
+  "BPM27301",
+  "BPM27401",
+  "BPM27501",
+  "BPM27601",
+  "BPM27701",
+  "BPM27801",
+  "BPM27901",
+  "BPM28201",
+  "BPM28301",
+  "BPM28401",
+  "BPM28501",
+  "BPM28601",
+  "BPM28701",
+  "BPM28801",
+  "BPM28901"
+ ],
+ "pmts": {
+  "PMT29150": "PMT:LI29:150",
+  "PMT756": "PMT:LTUH:756",
+  "PMT820": "PMT:LTUH:820"
+ },
+ "tmit_bpms": {
+  "BPMS:BSYH:445": "BPMBSYQ3",
+  "BPMS:BSYH:465": "BPMBSYQ4",
+  "BPMS:BSYH:640": "BPMBSYQ5",
+  "BPMS:BSYH:735": "BPMBSYQ6",
+  "BPMS:BSYH:910": "BPMBSYQA0",
+  "BPMS:BSYS:865": "BPMBP34",
+  "BPMS:CLTH:140": "BPMBSYQ1",
+  "BPMS:CLTH:170": "BPMBSYQ2",
+  "BPMS:CLTH:215": "BPMCUS",
+  "BPMS:CLTS:420": "BPMCUS1",
+  "BPMS:CLTS:450": "BPMCUS2",
+  "BPMS:CLTS:470": "BPMCUS3",
+  "BPMS:CLTS:500": "BPMCUS4",
+  "BPMS:CLTS:510": "BPMCUS5",
+  "BPMS:CLTS:540": "BPMCUS7",
+  "BPMS:CLTS:570": "BPMCUS8",
+  "BPMS:CLTS:590": "BPMCUS9",
+  "BPMS:CLTS:620": "BPMCUS10",
+  "BPMS:DMPH:325": "BPMUE1",
+  "BPMS:DMPH:381": "BPMUE2",
+  "BPMS:DMPH:502": "BPMQD",
+  "BPMS:DMPH:693": "BPMDD",
+  "BPMS:DMPS:325": "BPMUE1B",
+  "BPMS:DMPS:381": "BPMUE2B",
+  "BPMS:DMPS:502": "BPMQDB",
+  "BPMS:DMPS:693": "BPMDDB",
+  "BPMS:IN20:221": "BPM2",
+  "BPMS:IN20:235": "BPM3",
+  "BPMS:IN20:371": "BPM5",
+  "BPMS:IN20:425": "BPM6",
+  "BPMS:IN20:511": "BPM8",
+  "BPMS:IN20:525": "BPM9",
+  "BPMS:IN20:581": "BPM10",
+  "BPMS:IN20:631": "BPM11",
+  "BPMS:IN20:651": "BPM12",
+  "BPMS:IN20:731": "BPM13",
+  "BPMS:IN20:771": "BPM14",
+  "BPMS:IN20:781": "BPM15",
+  "BPMS:LI21:131": "BPMA11",
+  "BPMS:LI21:161": "BPMA12",
+  "BPMS:LI21:201": "BPM21201",
+  "BPMS:LI21:233": "BPMS11",
+  "BPMS:LI21:278": "BPMM12",
+  "BPMS:LI21:301": "BPM21301",
+  "BPMS:LI21:315": "BPMM14",
+  "BPMS:LI21:401": "BPM21401",
+  "BPMS:LI21:501": "BPM21501",
+  "BPMS:LI21:601": "BPM21601",
+  "BPMS:LI21:701": "BPM21701",
+  "BPMS:LI21:801": "BPM21801",
+  "BPMS:LI21:901": "BPM21901",
+  "BPMS:LI22:201": "BPM22201",
+  "BPMS:LI22:301": "BPM22301",
+  "BPMS:LI22:401": "BPM22401",
+  "BPMS:LI22:501": "BPM22501",
+  "BPMS:LI22:601": "BPM22601",
+  "BPMS:LI22:701": "BPM22701",
+  "BPMS:LI22:801": "BPM22801",
+  "BPMS:LI22:901": "BPM22901",
+  "BPMS:LI23:201": "BPM23201",
+  "BPMS:LI23:301": "BPM23301",
+  "BPMS:LI23:401": "BPM23401",
+  "BPMS:LI23:501": "BPM23501",
+  "BPMS:LI23:601": "BPM23601",
+  "BPMS:LI23:701": "BPM23701",
+  "BPMS:LI23:801": "BPM23801",
+  "BPMS:LI23:901": "BPM23901",
+  "BPMS:LI24:201": "BPM24201",
+  "BPMS:LI24:301": "BPM24301",
+  "BPMS:LI24:401": "BPM24401",
+  "BPMS:LI24:501": "BPM24501",
+  "BPMS:LI24:601": "BPM24601",
+  "BPMS:LI24:701": "BPM24701",
+  "BPMS:LI24:801": "BPMS21",
+  "BPMS:LI24:901": "BPM24901",
+  "BPMS:LI25:201": "BPM25201",
+  "BPMS:LI25:301": "BPM25301",
+  "BPMS:LI25:401": "BPM25401",
+  "BPMS:LI25:501": "BPM25501",
+  "BPMS:LI25:601": "BPM25601",
+  "BPMS:LI25:701": "BPM25701",
+  "BPMS:LI25:801": "BPM25801",
+  "BPMS:LI25:901": "BPM25901",
+  "BPMS:LI26:201": "BPM26201",
+  "BPMS:LI26:301": "BPM26301",
+  "BPMS:LI26:401": "BPM26401",
+  "BPMS:LI26:501": "BPM26501",
+  "BPMS:LI26:601": "BPM26601",
+  "BPMS:LI26:701": "BPM26701",
+  "BPMS:LI26:801": "BPM26801",
+  "BPMS:LI26:901": "BPM26901",
+  "BPMS:LI27:201": "BPM27201",
+  "BPMS:LI27:301": "BPM27301",
+  "BPMS:LI27:401": "BPM27401",
+  "BPMS:LI27:501": "BPM27501",
+  "BPMS:LI27:601": "BPM27601",
+  "BPMS:LI27:701": "BPM27701",
+  "BPMS:LI27:801": "BPM27801",
+  "BPMS:LI27:901": "BPM27901",
+  "BPMS:LI28:201": "BPM28201",
+  "BPMS:LI28:301": "BPM28301",
+  "BPMS:LI28:401": "BPM28401",
+  "BPMS:LI28:501": "BPM28501",
+  "BPMS:LI28:601": "BPM28601",
+  "BPMS:LI28:701": "BPM28701",
+  "BPMS:LI28:801": "BPM28801",
+  "BPMS:LI28:901": "BPM28901",
+  "BPMS:LI29:201": "BPM29201",
+  "BPMS:LI29:301": "BPM29301",
+  "BPMS:LI29:401": "BPM29401",
+  "BPMS:LI29:501": "BPM29501",
+  "BPMS:LI29:601": "BPM29601",
+  "BPMS:LI29:701": "BPM29701",
+  "BPMS:LI29:801": "BPM29801",
+  "BPMS:LI29:901": "BPM29901",
+  "BPMS:LI30:201": "BPM30201",
+  "BPMS:LI30:301": "BPM30301",
+  "BPMS:LI30:401": "BPM30401",
+  "BPMS:LI30:501": "BPM30501",
+  "BPMS:LI30:601": "BPM30601",
+  "BPMS:LI30:701": "BPM30701",
+  "BPMS:LI30:801": "BPM30801",
+  "BPMS:LTUH:110": "BPMVM1",
+  "BPMS:LTUH:120": "BPMVM2",
+  "BPMS:LTUH:130": "BPMVB1",
+  "BPMS:LTUH:150": "BPMVB2",
+  "BPMS:LTUH:170": "BPMVB3",
+  "BPMS:LTUH:180": "BPMVM3",
+  "BPMS:LTUH:190": "BPMVM4",
+  "BPMS:LTUH:250": "BPMDL1",
+  "BPMS:LTUH:290": "BPMT12",
+  "BPMS:LTUH:350": "BPMDL2",
+  "BPMS:LTUH:390": "BPMT22",
+  "BPMS:LTUH:450": "BPMDL3",
+  "BPMS:LTUH:490": "BPMT32",
+  "BPMS:LTUH:550": "BPMDL4",
+  "BPMS:LTUH:590": "BPMT42",
+  "BPMS:LTUH:620": "BPMEM1",
+  "BPMS:LTUH:640": "BPMEM2",
+  "BPMS:LTUH:660": "BPMEM3",
+  "BPMS:LTUH:680": "BPMEM4",
+  "BPMS:LTUH:720": "BPME31",
+  "BPMS:LTUH:730": "BPME32",
+  "BPMS:LTUH:740": "BPME33",
+  "BPMS:LTUH:750": "BPME34",
+  "BPMS:LTUH:760": "BPME35",
+  "BPMS:LTUH:770": "BPME36",
+  "BPMS:LTUH:820": "BPMUM1",
+  "BPMS:LTUH:840": "BPMUM2",
+  "BPMS:LTUH:860": "BPMUM3",
+  "BPMS:LTUH:880": "BPMUM4",
+  "BPMS:LTUH:910": "RFB07",
+  "BPMS:LTUH:960": "RFB08",
+  "BPMS:LTUS:110": "BPMDBL1",
+  "BPMS:LTUS:120": "BPMDBL2",
+  "BPMS:LTUS:150": "BPMDL11",
+  "BPMS:LTUS:180": "BPMDL12",
+  "BPMS:LTUS:235": "BPMDL13",
+  "BPMS:LTUS:270": "BPMDL14",
+  "BPMS:LTUS:300": "BPMDL15",
+  "BPMS:LTUS:345": "BPMDL16",
+  "BPMS:LTUS:370": "BPMDL17",
+  "BPMS:LTUS:430": "BPMDL18",
+  "BPMS:LTUS:450": "BPMDL19",
+  "BPMS:LTUS:470": "BPMDL20",
+  "BPMS:LTUS:500": "BPMDL21",
+  "BPMS:LTUS:510": "BPMDL22",
+  "BPMS:LTUS:540": "BPMVB1B",
+  "BPMS:LTUS:550": "BPMVB2B",
+  "BPMS:LTUS:560": "BPMVB3B",
+  "BPMS:LTUS:570": "BPMVM3B",
+  "BPMS:LTUS:580": "BPMVM4B",
+  "BPMS:LTUS:620": "BPMEM1B",
+  "BPMS:LTUS:640": "BPMEM2B",
+  "BPMS:LTUS:660": "BPMEM3B",
+  "BPMS:LTUS:680": "BPMEM4B",
+  "BPMS:LTUS:720": "BPME31B",
+  "BPMS:LTUS:730": "BPME32B",
+  "BPMS:LTUS:740": "BPME33B",
+  "BPMS:LTUS:750": "BPME34B",
+  "BPMS:LTUS:760": "BPME35B",
+  "BPMS:LTUS:780": "BPME36B",
+  "BPMS:LTUS:820": "BPMUM1B",
+  "BPMS:LTUS:840": "BPMUM2B",
+  "BPMS:LTUS:860": "BPMUM3B",
+  "BPMS:LTUS:880": "BPMUM4B",
+  "BPMS:LTUS:940": "RFBSX14",
+  "BPMS:UNDH:1305": "RFBHX12",
+  "BPMS:UNDH:1390": "RFBHX13",
+  "BPMS:UNDH:1490": "RFBHX14",
+  "BPMS:UNDH:1590": "RFBHX15",
+  "BPMS:UNDH:1690": "RFBHX16",
+  "BPMS:UNDH:1790": "RFBHX17",
+  "BPMS:UNDH:1890": "RFBHX18",
+  "BPMS:UNDH:1990": "RFBHX19",
+  "BPMS:UNDH:2090": "RFBHX20",
+  "BPMS:UNDH:2190": "RFBHX21",
+  "BPMS:UNDH:2290": "RFBHX22",
+  "BPMS:UNDH:2390": "RFBHX23",
+  "BPMS:UNDH:2490": "RFBHX24",
+  "BPMS:UNDH:2590": "RFBHX25",
+  "BPMS:UNDH:2690": "RFBHX26",
+  "BPMS:UNDH:2790": "RFBHX27",
+  "BPMS:UNDH:2890": "RFBHX28",
+  "BPMS:UNDH:2990": "RFBHX29",
+  "BPMS:UNDH:3090": "RFBHX30",
+  "BPMS:UNDH:3190": "RFBHX31",
+  "BPMS:UNDH:3290": "RFBHX32",
+  "BPMS:UNDH:3390": "RFBHX33",
+  "BPMS:UNDH:3490": "RFBHX34",
+  "BPMS:UNDH:3590": "RFBHX35",
+  "BPMS:UNDH:3690": "RFBHX36",
+  "BPMS:UNDH:3790": "RFBHX37",
+  "BPMS:UNDH:3890": "RFBHX38",
+  "BPMS:UNDH:3990": "RFBHX39",
+  "BPMS:UNDH:4090": "RFBHX40",
+  "BPMS:UNDH:4190": "RFBHX41",
+  "BPMS:UNDH:4290": "RFBHX42",
+  "BPMS:UNDH:4390": "RFBHX43",
+  "BPMS:UNDH:4490": "RFBHX44",
+  "BPMS:UNDH:4590": "RFBHX45",
+  "BPMS:UNDH:4690": "RFBHX46",
+  "BPMS:UNDH:4790": "RFBHX47",
+  "BPMS:UNDH:5190": "RFBHX51",
+  "BPMS:UNDS:1590": "RFBSX15",
+  "BPMS:UNDS:1690": "RFBSX16",
+  "BPMS:UNDS:1790": "RFBSX17",
+  "BPMS:UNDS:1890": "RFBSX18",
+  "BPMS:UNDS:1990": "RFBSX19",
+  "BPMS:UNDS:2190": "RFBSX21",
+  "BPMS:UNDS:2290": "RFBSX22",
+  "BPMS:UNDS:2390": "RFBSX23",
+  "BPMS:UNDS:2490": "RFBSX24",
+  "BPMS:UNDS:2590": "RFBSX25",
+  "BPMS:UNDS:2690": "RFBSX26",
+  "BPMS:UNDS:2790": "RFBSX27",
+  "BPMS:UNDS:2890": "RFBSX28",
+  "BPMS:UNDS:2990": "RFBSX29",
+  "BPMS:UNDS:3090": "RFBSX30",
+  "BPMS:UNDS:3190": "RFBSX31",
+  "BPMS:UNDS:3290": "RFBSX32",
+  "BPMS:UNDS:3390": "RFBSX33",
+  "BPMS:UNDS:3490": "RFBSX34",
+  "BPMS:UNDS:3590": "RFBSX35",
+  "BPMS:UNDS:3690": "RFBSX36",
+  "BPMS:UNDS:3790": "RFBSX37",
+  "BPMS:UNDS:3890": "RFBSX38",
+  "BPMS:UNDS:3990": "RFBSX39",
+  "BPMS:UNDS:4090": "RFBSX40",
+  "BPMS:UNDS:4190": "RFBSX41",
+  "BPMS:UNDS:4290": "RFBSX42",
+  "BPMS:UNDS:4390": "RFBSX43",
+  "BPMS:UNDS:4490": "RFBSX44",
+  "BPMS:UNDS:4590": "RFBSX45",
+  "BPMS:UNDS:4690": "RFBSX46",
+  "BPMS:UNDS:4790": "RFBSX47",
+  "BPMS:UNDS:5190": "RFBSX51"
+ },
+ "tmitloss": {
+  "downstream": [
+   "BPM30501",
+   "BPM30601",
+   "BPM30701",
+   "BPM30801"
+  ],
+  "upstream": [
+   "BPM27301",
+   "BPM27401",
+   "BPM27501",
+   "BPM27601"
+  ]
+ },
+ "wire": "WS28144",
+ "wire_control_name": "WIRE:LI28:144",
+ "wire_pvs": {
+  "abort_scan": "WIRE:LI28:144:MOTR.STOP",
+  "beam_rate": "WIRE:LI28:144:BEAMRATE",
+  "enabled": "WIRE:LI28:144:MOTR_ENABLED_STS",
+  "homed": "WIRE:LI28:144:MOTR_HOMED_STS",
+  "initialize": "WIRE:LI28:144:MOTR_INIT",
+  "initialize_status": "WIRE:LI28:144:MOTR_INIT_STS",
+  "install_angle": "WIRE:LI28:144:INSTALLANGLE",
+  "motor": "WIRE:LI28:144:MOTR",
+  "motor_rbv": "WIRE:LI28:144:MOTR.RBV",
+  "mps_speed": "WIRE:LI28:144:MPSSPEED",
+  "on_status": "WIRE:LI28:144:MOTR_ON_STS",
+  "retract": "WIRE:LI28:144:MOTR_RETRACT",
+  "scan_pulses": "WIRE:LI28:144:SCANPULSES",
+  "scan_status": "WIRE:LI28:144:SCANSTAT",
+  "speed": "WIRE:LI28:144:MOTR.VELO",
+  "speed_max": "WIRE:LI28:144:MOTR.VMAX",
+  "speed_min": "WIRE:LI28:144:MOTR.VBAS",
+  "start_scan": "WIRE:LI28:144:STARTSCAN",
+  "temperature": "WIRE:LI28:144:TEMP",
+  "timeout": "WIRE:LI28:144:MOTR_TIMEOUTEN",
+  "torque_enable": "WIRE:LI28:144:MOTR_SWITCH_ON_CMD",
+  "u_size": "WIRE:LI28:144:UWIRESIZE",
+  "u_speed_calc": "WIRE:LI28:144:WIREUSPEED_CALC",
+  "u_wire_inner": "WIRE:LI28:144:UWIREINNER",
+  "u_wire_outer": "WIRE:LI28:144:UWIREOUTER",
+  "use_u_wire": "WIRE:LI28:144:USEUWIRE",
+  "use_x_wire": "WIRE:LI28:144:USEXWIRE",
+  "use_y_wire": "WIRE:LI28:144:USEYWIRE",
+  "x_size": "WIRE:LI28:144:XWIRESIZE",
+  "x_speed_calc": "WIRE:LI28:144:WIREXSPEED_CALC",
+  "x_wire_inner": "WIRE:LI28:144:XWIREINNER",
+  "x_wire_outer": "WIRE:LI28:144:XWIREOUTER",
+  "y_size": "WIRE:LI28:144:YWIRESIZE",
+  "y_speed_calc": "WIRE:LI28:144:WIREYSPEED_CALC",
+  "y_wire_inner": "WIRE:LI28:144:YWIREINNER",
+  "y_wire_outer": "WIRE:LI28:144:YWIREOUTER"
+ }
+}
